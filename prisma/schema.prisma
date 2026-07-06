@@ -1,0 +1,107 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Rol {
+  DUENO
+  CAJERO
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+}
+
+model Usuario {
+  id          String   @id @default(uuid())
+  authUserId  String?  @unique
+  nombre      String
+  rol         Rol?
+  esPeluquero Boolean  @default(false)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  ventasComoCajero    Venta[]        @relation("CajeroVentas")
+  serviciosRealizados VentaDetalle[] @relation("PeluqueroServicios")
+  sesionesCaja        SesionCaja[]
+}
+
+model Servicio {
+  id             String  @id @default(uuid())
+  nombre         String
+  precio         Decimal @db.Decimal(10, 2)
+  cuentaParaBono Boolean @default(false)
+  activo         Boolean @default(true)
+
+  detalles VentaDetalle[]
+}
+
+model Venta {
+  id                           String         @id @default(uuid())
+  numeroTicket                 Int            @unique @default(autoincrement())
+  fecha                        DateTime       @default(now())
+  cajeroId                     String
+  cajero                       Usuario        @relation("CajeroVentas", fields: [cajeroId], references: [id])
+  metodoPago                   MetodoPago
+  comprobanteTransferenciaUlt4 String?        @db.Char(4)
+  total                        Decimal        @db.Decimal(10, 2)
+  detalles                     VentaDetalle[]
+}
+
+model VentaDetalle {
+  id                String   @id @default(uuid())
+  ventaId           String
+  venta             Venta    @relation(fields: [ventaId], references: [id])
+  servicioId        String
+  servicio          Servicio @relation(fields: [servicioId], references: [id])
+  peluqueroId       String
+  peluquero         Usuario  @relation("PeluqueroServicios", fields: [peluqueroId], references: [id])
+  precioCobrado     Decimal  @db.Decimal(10, 2)
+  comisionPeluquero Decimal  @db.Decimal(10, 2)
+  comisionDueno     Decimal  @db.Decimal(10, 2)
+}
+
+model ConfiguracionComision {
+  id                  String   @id @default(uuid())
+  porcentajePeluquero Decimal  @default(60) @db.Decimal(5, 2)
+  porcentajeDueno     Decimal  @default(40) @db.Decimal(5, 2)
+  vigenteDesde        DateTime @default(now())
+}
+
+model MetaCajero {
+  id           String  @id @default(uuid())
+  umbralCortes Int
+  montoBono    Decimal @db.Decimal(10, 2)
+  activo       Boolean @default(true)
+}
+
+model SesionCaja {
+  id                String     @id @default(uuid())
+  cajeroId          String
+  cajero            Usuario    @relation(fields: [cajeroId], references: [id])
+  cierreDiaId       String?
+  cierreDia         CierreDia? @relation(fields: [cierreDiaId], references: [id])
+  etiqueta          String?
+  horaApertura      DateTime
+  horaCierre        DateTime?
+  totalCortesSesion Int?
+  totalVentasSesion Decimal?   @db.Decimal(10, 2)
+  sueldoBaseSesion  Decimal?   @db.Decimal(10, 2)
+  bonoSesion        Decimal?   @db.Decimal(10, 2)
+}
+
+model CierreDia {
+  id               String       @id @default(uuid())
+  fecha            DateTime     @unique @db.Date
+  totalCortesDia   Int
+  bonoAlcanzado    Boolean      @default(false)
+  montoBonoPorCaja Decimal?     @db.Decimal(10, 2)
+  sesionesCaja     SesionCaja[]
+}
