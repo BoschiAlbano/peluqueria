@@ -1,12 +1,5 @@
 import "dotenv/config";
-import { defineConfig } from "prisma/config";
-
-// Placeholder para `prisma generate` cuando aún no hay .env configurado.
-const databaseUrl =
-  process.env.DATABASE_URL ??
-  "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
-
-const directUrl = process.env.DIRECT_URL ?? databaseUrl;
+import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -14,7 +7,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: databaseUrl,
-    directUrl,
+    // 💡 Prisma 7 usa esto para conectarse a la base de datos durante la migración local.
+    // Usamos DIRECT_URL (puerto 5432) para saltarnos el bloqueo del pooler de Supabase.
+    url: env("DIRECT_URL"),
   },
 });
