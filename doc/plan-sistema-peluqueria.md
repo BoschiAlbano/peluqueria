@@ -420,6 +420,25 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
 
 ---
 
+## 10.1 Revisión general (auditoría de correctitud) — julio 2026
+
+Antes de seguir sumando funcionalidad, se hizo una revisión completa de todo lo construido (`code-review` a nivel alto, 7 ángulos de búsqueda + verificación 1 a 1 contra el código real). Se encontraron y corrigieron 10 problemas reales:
+
+1. **Atribución de venta:** `crearVenta` ahora usa el usuario autenticado (`requireUsuario()`) para `Venta.cajeroId`, no `sesionAbierta.cajeroId`. Antes, si otro cajero usaba la terminal sin reabrir sesión, sus ventas quedaban a nombre de quien había abierto la caja.
+2. **Escalón de bono duplicado al reactivar:** `cambiarEstadoMeta` ahora vuelve a validar (`validarEscalon`) al reactivar un escalón — antes se podía terminar con dos escalones activos con el mismo umbral de cortes, y `cerrarDia` elegía uno de forma no determinística.
+3. **Condición de carrera al abrir caja:** nueva migración `20260709000000_unica_caja_abierta` agrega un índice único parcial en Postgres (`WHERE "horaCierre" IS NULL`) que garantiza a nivel de base que nunca hay dos `SesionCaja` abiertas a la vez — antes solo se validaba en el servidor (`findFirst` + `create` sin transacción), lo que permitía duplicados con dos aperturas casi simultáneas.
+4. **Zona horaria del "día comercial":** `lib/rangos-fecha.ts` ahora calcula todos los límites de día/semana/mes con el huso horario fijo de Argentina (`America/Argentina/Buenos_Aires`, UTC-3) usando `Intl.DateTimeFormat`, en vez de `Date.setHours(0,0,0,0)` (que trunca en el huso horario del *servidor* — un problema real en Vercel, que corre en UTC por defecto). `cerrarDia` en `actions/caja.ts` usa el mismo helper.
+5. **Porcentajes hardcodeados en el dashboard:** `/dueno` mostraba "(40%)"/"(60%)" fijos aunque el dueño cambiara la comisión desde Configuración. Ahora lee `ConfiguracionComision` vigente y muestra el % real.
+6. **Peluqueros inactivos podían seguir vendiendo:** `crearVenta` ahora filtra peluqueros por `activo: true` (igual que ya hacía con servicios) y rechaza la venta con un error claro si no.
+7. **Contador de cortes en vivo desincronizado del cierre de día:** el dashboard contaba "cortes de hoy" por fecha de cada venta, pero `cerrarDia` agrupa sesiones enteras por el día en que *abrieron* — para una sesión que cruza medianoche, ambos números podían no coincidir. Nueva función `obtenerCortesHoyEnVivo()` en `actions/caja.ts` usa exactamente el mismo criterio de agrupación que `cerrarDia`, para que el número en vivo sea siempre el que terminará liquidándose.
+8. **Condición de carrera entre una venta y el cierre de sesión:** `crearVenta` y `cerrarSesion` ahora bloquean (`SELECT ... FOR UPDATE`) la misma fila de `SesionCaja` dentro de una transacción, para que una venta no pueda insertarse justo entre el cálculo de totales y el cierre de la sesión (lo que la dejaría cobrada pero afuera del ticket de control y del cálculo del bono).
+9. **Fecha incorrecta en el filtro de Reportes:** el filtro por defecto usaba `toISOString()` (UTC) para mostrar la fecha, lo que podía mostrar el día siguiente al real en horario nocturno argentino. Ahora usa `fechaComercialYMD()` (mismo huso horario fijo que el resto de la app). Cosmético, no afectaba el filtrado real de datos.
+10. **Cajeros del seed no podían loguearse:** `prisma/seed.ts` creaba usuarios sin `username`/`authUserId`, incompatibles con el login actual. Ahora crea cuentas reales de Supabase Auth para los cajeros de prueba ("juan"/"ana", contraseña de desarrollo). El dueño sigue sin crearse por seed (se aprovisiona una única vez a mano, ver §2.1) para no duplicar la cuenta real.
+
+Todos verificados end-to-end contra la base real (no solo typecheck) antes de darlos por corregidos.
+
+---
+
 ## 11. Estado actual y próximo paso sugerido
 
 Ya están construidos y verificados end-to-end: el flujo de venta completo (POS → comisión 60/40 → ticket), apertura/cierre de sesión de caja con ticket de control, cierre de día explícito con cálculo de bono y liquidación de sueldo por sesión, la página de Configuración (precios, % de comisión y CRUD de cajeros), el dashboard del dueño (ventas por rango, ranking de peluqueros, avance en vivo del bono), y ahora **Auth real con Supabase**: login sin registro, sesión validada en cada página (`(dashboard)/layout.tsx` redirige a `/login` si no hay sesión), menú y páginas filtrados por rol (`requireDueno()` protege `/configuracion` y `/dueno` incluso por acceso directo a la URL), y el cajero de cada venta/sesión se deriva de quién está logueado — ya no hay un selector manual.

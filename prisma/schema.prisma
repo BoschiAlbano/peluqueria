@@ -86,6 +86,11 @@ model MetaCajero {
   activo       Boolean @default(true)
 }
 
+// Nota: además de la validación en abrirSesion(), la base tiene un índice
+// único parcial (migración 20260709000000_unica_caja_abierta) que garantiza
+// que nunca haya dos filas con horaCierre IS NULL al mismo tiempo. Prisma no
+// tiene sintaxis nativa para índices parciales, así que no aparece acá — no
+// borrar esa migración ni asumir que falta un @@index.
 model SesionCaja {
   id                String     @id @default(uuid())
   cajeroId          String

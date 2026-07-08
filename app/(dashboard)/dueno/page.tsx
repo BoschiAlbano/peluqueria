@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioActual } from "@/lib/auth";
-import { inicioDeRango, inicioDeHoy, type RangoFecha } from "@/lib/rangos-fecha";
+import { obtenerCortesHoyEnVivo } from "@/actions/caja";
+import { inicioDeRango, type RangoFecha } from "@/lib/rangos-fecha";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -41,9 +42,8 @@ export default async function DuenoPage({
     rangoParam === "semana" || rangoParam === "mes" ? rangoParam : "hoy";
 
   const inicio = inicioDeRango(rango);
-  const inicioHoy = inicioDeHoy();
 
-  const [detallesRango, ventasRango, detallesHoy, escalones] = await Promise.all([
+  const [detallesRango, ventasRango, cortesHoy, escalones, configComision] = await Promise.all([
     prisma.ventaDetalle.findMany({
       where: { venta: { fecha: { gte: inicio } } },
       include: { servicio: true, peluquero: true },
@@ -52,11 +52,13 @@ export default async function DuenoPage({
       where: { fecha: { gte: inicio } },
       select: { total: true },
     }),
-    prisma.ventaDetalle.findMany({
-      where: { venta: { fecha: { gte: inicioHoy } }, servicio: { cuentaParaBono: true } },
-    }),
+    obtenerCortesHoyEnVivo(),
     prisma.metaCajero.findMany({ where: { activo: true }, orderBy: { umbralCortes: "asc" } }),
+    prisma.configuracionComision.findFirst({ orderBy: { vigenteDesde: "desc" } }),
   ]);
+
+  const porcentajeDueno = Number(configComision?.porcentajeDueno ?? 40);
+  const porcentajePeluquero = Number(configComision?.porcentajePeluquero ?? 60);
 
   const totalVentas = ventasRango.reduce((acc, v) => acc + Number(v.total), 0);
   const cantidadVentas = ventasRango.length;
@@ -82,7 +84,6 @@ export default async function DuenoPage({
   }
   const ranking = [...rankingMap.values()].sort((a, b) => b.plataGenerada - a.plataGenerada);
 
-  const cortesHoy = detallesHoy.length;
   const escalonAlcanzado = [...escalones].reverse().find((e) => e.umbralCortes <= cortesHoy);
   const proximoEscalon = escalones.find((e) => e.umbralCortes > cortesHoy);
 
@@ -118,7 +119,9 @@ export default async function DuenoPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Ganancia del dueño (40%)</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">
+              Ganancia del dueño ({porcentajeDueno}%)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">{formatoMoneda.format(gananciaDueno)}</p>
@@ -157,7 +160,7 @@ export default async function DuenoPage({
                 <TableHead className="text-right">Cortes</TableHead>
                 <TableHead className="text-right">Servicios</TableHead>
                 <TableHead className="text-right">Plata generada</TableHead>
-                <TableHead className="text-right">Comisión (60%)</TableHead>
+                <TableHead className="text-right">Comisión ({porcentajePeluquero}%)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

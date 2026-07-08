@@ -108,6 +108,14 @@ export async function actualizarMeta(id: string, umbralCortes: number, montoBono
 export async function cambiarEstadoMeta(id: string, activo: boolean) {
   await requireDueno();
 
+  // Reactivar puede volver a chocar con el mismo umbral de otro escalón que
+  // se haya creado mientras este estaba inactivo — hay que revalidar, no
+  // solo al crear/editar.
+  if (activo) {
+    const meta = await prisma.metaCajero.findUniqueOrThrow({ where: { id } });
+    await validarEscalon(meta.umbralCortes, Number(meta.montoBono), id);
+  }
+
   await prisma.metaCajero.update({ where: { id }, data: { activo } });
 
   revalidatePath("/configuracion");

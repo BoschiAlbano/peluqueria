@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioActual } from "@/lib/auth";
 import { obtenerFilasReporte, rangoDesdeParams } from "@/lib/reportes";
+import { fechaComercialYMD } from "@/lib/rangos-fecha";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -20,8 +21,10 @@ const formatoMoneda = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 0,
 });
 
+// Usamos el huso horario del negocio (no toISOString, que es UTC) para que
+// la fecha mostrada en el filtro coincida con el "hoy" real del dueño.
 function aInputDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return fechaComercialYMD(d);
 }
 
 export default async function ReportesPage({

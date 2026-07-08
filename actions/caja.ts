@@ -1,29 +1,43 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { SUELDO_BASE_CAJERO } from "@/lib/config-negocio";
 import { MetodoPago } from "@/generated/prisma/enums";
 import { requireUsuario } from "@/lib/auth";
+import { inicioDelDia } from "@/lib/rangos-fecha";
+
+const ERROR_CAJA_YA_ABIERTA = "Ya hay una caja abierta. Hay que cerrarla antes de abrir otra.";
 
 export async function abrirSesion(etiqueta?: string) {
   const usuario = await requireUsuario();
 
+  // Chequeo optimista para dar un error claro en el caso común. La garantía
+  // real contra dos aperturas simultáneas (condición de carrera) es el índice
+  // único parcial en la base — ver migración 20260709000000_unica_caja_abierta.
   const sesionAbierta = await prisma.sesionCaja.findFirst({
     where: { horaCierre: null },
   });
 
   if (sesionAbierta) {
-    throw new Error("Ya hay una caja abierta. Hay que cerrarla antes de abrir otra.");
+    throw new Error(ERROR_CAJA_YA_ABIERTA);
   }
 
-  await prisma.sesionCaja.create({
-    data: {
-      cajeroId: usuario.id,
-      etiqueta: etiqueta?.trim() || null,
-      horaApertura: new Date(),
-    },
-  });
+  try {
+    await prisma.sesionCaja.create({
+      data: {
+        cajeroId: usuario.id,
+        etiqueta: etiqueta?.trim() || null,
+        horaApertura: new Date(),
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error(ERROR_CAJA_YA_ABIERTA);
+    }
+    throw error;
+  }
 
   revalidatePath("/caja");
   revalidatePath("/ventas");
@@ -65,36 +79,47 @@ export type ResumenSesionCajero = SesionCerradaResumen & {
 export async function cerrarSesion(sesionId: string): Promise<ResumenSesionCajero> {
   await requireUsuario();
 
-  const sesion = await prisma.sesionCaja.findUnique({
-    where: { id: sesionId },
-    include: { cajero: true },
-  });
+  // Bloquea (FOR UPDATE) la misma fila que crearVenta() bloquea al insertar
+  // una venta, y recién ahí lee las ventas de la sesión — así ninguna venta
+  // puede colarse entre el cálculo de totales y el cierre (ver comentario en
+  // crearVenta).
+  const { sesion, ventasSesion, totalCortesSesion, totalVentasSesion, horaCierre } =
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "SesionCaja" WHERE id = ${sesionId} FOR UPDATE`;
 
-  if (!sesion) {
-    throw new Error("La sesión de caja no existe.");
-  }
+      const sesion = await tx.sesionCaja.findUnique({
+        where: { id: sesionId },
+        include: { cajero: true },
+      });
 
-  if (sesion.horaCierre) {
-    throw new Error("Esta sesión ya está cerrada.");
-  }
+      if (!sesion) {
+        throw new Error("La sesión de caja no existe.");
+      }
 
-  const ventasSesion = await prisma.venta.findMany({
-    where: { sesionCajaId: sesionId },
-    include: { detalles: { include: { servicio: true } } },
-  });
+      if (sesion.horaCierre) {
+        throw new Error("Esta sesión ya está cerrada.");
+      }
 
-  const totalVentasSesion = ventasSesion.reduce((acc, v) => acc + Number(v.total), 0);
-  const totalCortesSesion = ventasSesion.reduce(
-    (acc, v) => acc + v.detalles.filter((d) => d.servicio.cuentaParaBono).length,
-    0,
-  );
+      const ventasSesion = await tx.venta.findMany({
+        where: { sesionCajaId: sesionId },
+        include: { detalles: { include: { servicio: true } } },
+      });
 
-  const horaCierre = new Date();
+      const totalVentasSesion = ventasSesion.reduce((acc, v) => acc + Number(v.total), 0);
+      const totalCortesSesion = ventasSesion.reduce(
+        (acc, v) => acc + v.detalles.filter((d) => d.servicio.cuentaParaBono).length,
+        0,
+      );
 
-  await prisma.sesionCaja.update({
-    where: { id: sesionId },
-    data: { horaCierre, totalCortesSesion, totalVentasSesion },
-  });
+      const horaCierre = new Date();
+
+      await tx.sesionCaja.update({
+        where: { id: sesionId },
+        data: { horaCierre, totalCortesSesion, totalVentasSesion },
+      });
+
+      return { sesion, ventasSesion, totalCortesSesion, totalVentasSesion, horaCierre };
+    });
 
   const metodoPagoMap = new Map<MetodoPago, TotalPorMetodoPago>();
   for (const v of ventasSesion) {
@@ -177,6 +202,32 @@ export async function obtenerEstadoCierreDia(): Promise<EstadoCierreDia> {
   };
 }
 
+// Cortes que van a contar para el bono la próxima vez que se presione
+// "Cerrar caja del día" — sesiones cerradas aún no liquidadas + lo que va de
+// la sesión abierta en este momento (si hay una). Usar esto (y no una
+// ventana de fecha "hoy") para mostrar el avance en vivo: cerrarDia() agrupa
+// por sesión, no por el reloj, así que si una sesión cruza la medianoche,
+// contar por fecha del ticket individual desincroniza el número en vivo del
+// número que termina liquidándose.
+export async function obtenerCortesHoyEnVivo(): Promise<number> {
+  const [pendientes, sesionAbierta] = await Promise.all([
+    prisma.sesionCaja.findMany({
+      where: { cierreDiaId: null, horaCierre: { not: null } },
+    }),
+    prisma.sesionCaja.findFirst({ where: { horaCierre: null } }),
+  ]);
+
+  let cortes = pendientes.reduce((acc, s) => acc + (s.totalCortesSesion ?? 0), 0);
+
+  if (sesionAbierta) {
+    cortes += await prisma.ventaDetalle.count({
+      where: { venta: { sesionCajaId: sesionAbierta.id }, servicio: { cuentaParaBono: true } },
+    });
+  }
+
+  return cortes;
+}
+
 // Acción explícita del cajero/dueño: liquida todas las sesiones de caja
 // cerradas y todavía no agrupadas en un CierreDia, calculando sueldo base +
 // bono (según el total de cortes del día) para cada una, y la comisión de
@@ -207,10 +258,11 @@ export async function cerrarDia(): Promise<CierreDiaResumen> {
     throw new Error("No hay sesiones de caja pendientes de liquidar.");
   }
 
-  const fecha = new Date(sesionesPendientes[0].horaApertura);
-  fecha.setHours(0, 0, 0, 0);
+  // inicioDelDia calcula la medianoche en el huso horario del negocio (no el
+  // del servidor) — ver lib/rangos-fecha.ts.
+  const fecha = inicioDelDia(sesionesPendientes[0].horaApertura);
   const finFecha = new Date(fecha);
-  finFecha.setDate(finFecha.getDate() + 1);
+  finFecha.setUTCDate(finFecha.getUTCDate() + 1);
 
   const sesionesDelDia = await prisma.sesionCaja.findMany({
     where: {

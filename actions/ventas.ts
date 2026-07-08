@@ -33,18 +33,10 @@ export type CrearVentaResult = {
 export async function crearVenta(
   input: CrearVentaInput,
 ): Promise<CrearVentaResult> {
-  await requireUsuario();
+  const usuario = await requireUsuario();
 
   if (!input.lineas.length) {
     throw new Error("La venta debe tener al menos un servicio.");
-  }
-
-  const sesionAbierta = await prisma.sesionCaja.findFirst({
-    where: { horaCierre: null },
-  });
-
-  if (!sesionAbierta) {
-    throw new Error("No hay una caja abierta. Abrí una sesión antes de cargar ventas.");
   }
 
   if (input.metodoPago === MetodoPago.TRANSFERENCIA) {
@@ -69,11 +61,20 @@ export async function crearVenta(
   });
   const servicioPorId = new Map(servicios.map((s) => [s.id, s]));
 
+  const peluqueroIds = [...new Set(input.lineas.map((l) => l.peluqueroId))];
+  const peluqueros = await prisma.usuario.findMany({
+    where: { id: { in: peluqueroIds }, esPeluquero: true, activo: true },
+  });
+  const peluqueroPorId = new Map(peluqueros.map((p) => [p.id, p]));
+
   let total = 0;
   const detallesData = input.lineas.map((linea) => {
     const servicio = servicioPorId.get(linea.servicioId);
     if (!servicio) {
       throw new Error("Uno de los servicios seleccionados no existe o está inactivo.");
+    }
+    if (!peluqueroPorId.has(linea.peluqueroId)) {
+      throw new Error("Uno de los peluqueros seleccionados no existe o está inactivo.");
     }
 
     const precioCobrado = Number(servicio.precio);
@@ -92,27 +93,38 @@ export async function crearVenta(
     };
   });
 
-  const peluqueroIds = [...new Set(input.lineas.map((l) => l.peluqueroId))];
-  const peluqueros = await prisma.usuario.findMany({
-    where: { id: { in: peluqueroIds } },
-  });
-  const peluqueroPorId = new Map(peluqueros.map((p) => [p.id, p]));
+  // La sesión abierta se busca y bloquea (FOR UPDATE) dentro de la misma
+  // transacción en la que se inserta la venta. Esto serializa esta acción
+  // contra cerrarSesion(), que toma el mismo lock antes de calcular los
+  // totales de la sesión — sin esto, una venta podría insertarse justo entre
+  // el cálculo de totales y el cierre, quedando cobrada pero afuera del
+  // ticket de control y del total usado para el bono.
+  const venta = await prisma.$transaction(async (tx) => {
+    const sesiones = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "SesionCaja" WHERE "horaCierre" IS NULL FOR UPDATE
+    `;
+    const sesionAbierta = sesiones[0];
 
-  const venta = await prisma.venta.create({
-    data: {
-      cajeroId: sesionAbierta.cajeroId,
-      sesionCajaId: sesionAbierta.id,
-      metodoPago: input.metodoPago,
-      comprobanteTransferenciaUlt4:
-        input.metodoPago === MetodoPago.TRANSFERENCIA
-          ? input.comprobanteTransferenciaUlt4
-          : null,
-      total,
-      detalles: { create: detallesData },
-    },
-    include: {
-      detalles: true,
-    },
+    if (!sesionAbierta) {
+      throw new Error("No hay una caja abierta. Abrí una sesión antes de cargar ventas.");
+    }
+
+    return tx.venta.create({
+      data: {
+        cajeroId: usuario.id,
+        sesionCajaId: sesionAbierta.id,
+        metodoPago: input.metodoPago,
+        comprobanteTransferenciaUlt4:
+          input.metodoPago === MetodoPago.TRANSFERENCIA
+            ? input.comprobanteTransferenciaUlt4
+            : null,
+        total,
+        detalles: { create: detallesData },
+      },
+      include: {
+        detalles: true,
+      },
+    });
   });
 
   revalidatePath("/ventas");

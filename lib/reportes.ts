@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { inicioDeRango } from "@/lib/rangos-fecha";
 
 export type FiltroReporte = {
   desde: Date;
@@ -26,29 +27,29 @@ export async function obtenerFilasReporte(filtro: FiltroReporte): Promise<FilaRe
       ...(filtro.servicioId ? { servicioId: filtro.servicioId } : {}),
     },
     include: { venta: true, peluquero: true, servicio: true },
+    orderBy: { venta: { fecha: "asc" } },
   });
 
-  return detalles
-    .map((d) => ({
-      fecha: d.venta.fecha,
-      numeroTicket: d.venta.numeroTicket,
-      peluqueroNombre: d.peluquero.nombre,
-      servicioNombre: d.servicio.nombre,
-      metodoPago: d.venta.metodoPago,
-      precioCobrado: Number(d.precioCobrado),
-      comisionPeluquero: Number(d.comisionPeluquero),
-      comisionDueno: Number(d.comisionDueno),
-    }))
-    .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+  return detalles.map((d) => ({
+    fecha: d.venta.fecha,
+    numeroTicket: d.venta.numeroTicket,
+    peluqueroNombre: d.peluquero.nombre,
+    servicioNombre: d.servicio.nombre,
+    metodoPago: d.venta.metodoPago,
+    precioCobrado: Number(d.precioCobrado),
+    comisionPeluquero: Number(d.comisionPeluquero),
+    comisionDueno: Number(d.comisionDueno),
+  }));
 }
 
-// Convierte "YYYY-MM-DD" (input type=date) a un rango [00:00:00, 23:59:59.999] local.
+// Convierte "YYYY-MM-DD" (input type=date) a un rango [00:00:00, 23:59:59.999]
+// en el huso horario del negocio (no el del servidor) — ver lib/rangos-fecha.ts.
 export function rangoDesdeParams(desdeStr?: string, hastaStr?: string): { desde: Date; hasta: Date } {
-  const hoy = new Date();
-  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const ahora = new Date();
+  const OFFSET_NEGOCIO = "-03:00";
 
-  const desde = desdeStr ? new Date(`${desdeStr}T00:00:00`) : inicioMes;
-  const hasta = hastaStr ? new Date(`${hastaStr}T23:59:59.999`) : hoy;
+  const desde = desdeStr ? new Date(`${desdeStr}T00:00:00${OFFSET_NEGOCIO}`) : inicioDeRango("mes");
+  const hasta = hastaStr ? new Date(`${hastaStr}T23:59:59.999${OFFSET_NEGOCIO}`) : ahora;
 
   return { desde, hasta };
 }
