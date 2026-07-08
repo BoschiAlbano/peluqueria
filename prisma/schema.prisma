@@ -23,6 +23,7 @@ enum MetodoPago {
 model Usuario {
   id          String   @id @default(uuid())
   authUserId  String?  @unique
+  username    String?  @unique // login por usuario, no por email (ver lib/auth-username.ts)
   nombre      String
   rol         Rol?
   esPeluquero Boolean  @default(false)
@@ -50,6 +51,8 @@ model Venta {
   fecha                        DateTime       @default(now())
   cajeroId                     String
   cajero                       Usuario        @relation("CajeroVentas", fields: [cajeroId], references: [id])
+  sesionCajaId                 String
+  sesionCaja                   SesionCaja     @relation(fields: [sesionCajaId], references: [id])
   metodoPago                   MetodoPago
   comprobanteTransferenciaUlt4 String?        @db.Char(4)
   total                        Decimal        @db.Decimal(10, 2)
@@ -95,6 +98,7 @@ model SesionCaja {
   totalCortesSesion Int?
   totalVentasSesion Decimal?   @db.Decimal(10, 2)
   sueldoBaseSesion  Decimal?   @db.Decimal(10, 2)
+  ventas            Venta[]
   bonoSesion        Decimal?   @db.Decimal(10, 2)
 }
 
