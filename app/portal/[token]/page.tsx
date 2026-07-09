@@ -52,7 +52,7 @@ export default async function PortalPeluqueroPage({
   const totalServicios = filas.length;
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-black">
+    <div className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto max-w-3xl space-y-4">
         <div>
           <h1 className="text-xl font-semibold">{peluquero.nombre}</h1>

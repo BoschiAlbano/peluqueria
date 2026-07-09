@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { SesionCajaCard } from "@/components/pos/sesion-caja-card";
 import { CierreDiaCard } from "@/components/pos/cierre-dia-card";
 import { obtenerEstadoCierreDia } from "@/actions/caja";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default async function CajaPage() {
   const [sesionAbierta, estadoCierreDia] = await Promise.all([
@@ -37,16 +38,11 @@ export default async function CajaPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Caja</h1>
-        <p className="text-sm text-muted-foreground">
-          Abrí y cerrá sesiones de caja durante el día (mañana, tarde, lo que haga falta),
-          y liquidá sueldo + bono al cerrar la caja del día.
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
+    <PageHeader
+      title="Caja"
+      description="Abrí y cerrá sesiones de caja durante el día (mañana, tarde, lo que haga falta), y liquidá sueldo + bono al cerrar la caja del día."
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
         <SesionCajaCard sesion={sesionInfo} totalVentasSesion={totalVentasSesion} />
 
         <CierreDiaCard
@@ -55,6 +51,6 @@ export default async function CajaPage() {
           hayCajaAbierta={estadoCierreDia.hayCajaAbierta}
         />
       </div>
-    </div>
+    </PageHeader>
   );
 }

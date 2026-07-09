@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/layout/page-header";
 
 const formatoMoneda = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -88,14 +89,10 @@ export default async function DuenoPage({
   const proximoEscalon = escalones.find((e) => e.umbralCortes > cortesHoy);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Dashboard del dueño</h1>
-        <p className="text-sm text-muted-foreground">
-          Ventas, ranking de peluqueros y avance del bono del día.
-        </p>
-      </div>
-
+    <PageHeader
+      title="Dashboard del dueño"
+      description="Ventas, ranking de peluqueros y avance del bono del día."
+    >
       <div className="flex gap-2">
         {RANGOS.map((r) => (
           <Link key={r.valor} href={`/dueno?rango=${r.valor}`}>
@@ -106,7 +103,7 @@ export default async function DuenoPage({
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3 max-w-3xl">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">Ventas</CardTitle>
@@ -148,7 +145,7 @@ export default async function DuenoPage({
         </Card>
       </div>
 
-      <Card className="max-w-3xl">
+      <Card>
         <CardHeader>
           <CardTitle>Ranking de peluqueros</CardTitle>
         </CardHeader>
@@ -186,6 +183,6 @@ export default async function DuenoPage({
           </Table>
         </CardContent>
       </Card>
-    </div>
+    </PageHeader>
   );
 }

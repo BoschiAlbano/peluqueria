@@ -9,6 +9,7 @@ import { CajerosForm } from "@/components/configuracion/cajeros-form";
 import { PeluquerosForm } from "@/components/configuracion/peluqueros-form";
 import { MetasForm } from "@/components/configuracion/metas-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default async function ConfiguracionPage() {
   const usuario = await obtenerUsuarioActual();
@@ -25,15 +26,11 @@ export default async function ConfiguracionPage() {
   ]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Configuración</h1>
-        <p className="text-sm text-muted-foreground">
-          Precios de servicios, porcentaje de comisión, cajeros y peluqueros.
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
+    <PageHeader
+      title="Configuración"
+      description="Precios de servicios, porcentaje de comisión, cajeros y peluqueros."
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Servicios</CardTitle>
@@ -55,7 +52,7 @@ export default async function ConfiguracionPage() {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 max-w-3xl">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Cajeros</CardTitle>
@@ -75,7 +72,7 @@ export default async function ConfiguracionPage() {
         </Card>
       </div>
 
-      <Card className="max-w-2xl">
+      <Card>
         <CardHeader>
           <CardTitle>Escalones de bono</CardTitle>
         </CardHeader>
@@ -83,6 +80,6 @@ export default async function ConfiguracionPage() {
           <MetasForm metas={metas} />
         </CardContent>
       </Card>
-    </div>
+    </PageHeader>
   );
 }

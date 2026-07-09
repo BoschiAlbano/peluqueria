@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
     // (ver revalidatePath en actions/caja.ts, que no alcanza a invalidar
     // el caché del cliente de forma confiable en producción/Vercel).
     staleTimes: { dynamic: 0 },
+    // lucide-react (y otras libs con "barrel files") re-exportan miles de
+    // íconos desde un solo entry point — sin esto, cada import de un ícono
+    // carga toda la librería. Mantiene el import de siempre (import { X }
+    // from "lucide-react"), Next lo transforma a un import directo al buildear.
+    optimizePackageImports: ["lucide-react"],
   },
 };
 

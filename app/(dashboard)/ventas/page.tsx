@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PosForm } from "@/components/pos/pos-form";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default async function VentasPage() {
   const [servicios, peluqueros, sesionAbierta] = await Promise.all([
@@ -13,14 +14,7 @@ export default async function VentasPage() {
   ]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Ventas</h1>
-        <p className="text-sm text-muted-foreground">
-          Cargá la venta, seleccioná peluquero y método de pago.
-        </p>
-      </div>
-
+    <PageHeader title="Ventas" description="Cargá la venta, seleccioná peluquero y método de pago.">
       {sesionAbierta ? (
         <PosForm
           servicios={servicios.map((s) => ({
@@ -39,6 +33,6 @@ export default async function VentasPage() {
           para poder cargar ventas.
         </p>
       )}
-    </div>
+    </PageHeader>
   );
 }

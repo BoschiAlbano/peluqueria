@@ -4,17 +4,19 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col align-middle items-center justify-center py-32 px-16 ">
-        <Logo className="fill-black h-100" />
-        <h1 className="text-4xl font-bold text-black dark:text-white">
-          pagina de inicio
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 bg-background px-6 py-16 text-center">
+      <Logo className="h-32 w-32 fill-foreground sm:h-40 sm:w-40" />
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">
+          El Maestro Peluquería
         </h1>
-        {/* Login */}
-        <Button render={<Link href="/login" />} nativeButton={false}>
-          Login
-        </Button>
-      </main>
+        <p className="text-muted-foreground">
+          Sistema de gestión de ventas, caja y comisiones.
+        </p>
+      </div>
+      <Button render={<Link href="/login" />} nativeButton={false} size="lg">
+        Ingresar
+      </Button>
     </div>
   );
 }

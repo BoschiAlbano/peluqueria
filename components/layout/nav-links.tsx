@@ -1,30 +1,51 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Receipt, Wallet, Settings, LayoutDashboard, FileBarChart } from "lucide-react";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import type { Rol } from "@/generated/prisma/enums";
 
-export function NavLinks({ rol, onNavigate }: { rol: Rol; onNavigate?: () => void }) {
+const ITEMS = [
+  { href: "/ventas", label: "Ventas", icon: Receipt, soloDueno: false },
+  { href: "/caja", label: "Caja", icon: Wallet, soloDueno: false },
+  { href: "/dueno/reportes", label: "Reportes", icon: FileBarChart, soloDueno: true },
+  { href: "/dueno", label: "Dueño", icon: LayoutDashboard, soloDueno: true },
+  { href: "/configuracion", label: "Configuración", icon: Settings, soloDueno: true },
+] as const;
+
+export function NavLinks({ rol }: { rol: Rol }) {
+  const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
+
   return (
-    <nav className="flex flex-col gap-2 text-sm">
-      <Link href="/ventas" onClick={onNavigate}>
-        Ventas
-      </Link>
-      <Link href="/caja" onClick={onNavigate}>
-        Caja
-      </Link>
-      {rol === "DUENO" && (
-        <>
-          <Link href="/configuracion" onClick={onNavigate}>
-            Configuración
-          </Link>
-          <Link href="/dueno" onClick={onNavigate}>
-            Dueño
-          </Link>
-          <Link href="/dueno/reportes" onClick={onNavigate}>
-            Reportes
-          </Link>
-        </>
-      )}
-    </nav>
+    <SidebarMenu>
+      {ITEMS.filter((item) => !item.soloDueno || rol === "DUENO").map((item) => {
+        const activo = pathname === item.href;
+        const Icono = item.icon;
+        return (
+          <SidebarMenuItem key={item.href}>
+            <SidebarMenuButton
+              isActive={activo}
+              tooltip={item.label}
+              render={
+                <Link
+                  href={item.href}
+                  onClick={() => isMobile && setOpenMobile(false)}
+                />
+              }
+            >
+              <Icono />
+              <span>{item.label}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
   );
 }
