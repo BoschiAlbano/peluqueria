@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "tsx scripts/borrar-auth-usuarios.ts && prisma migrate reset --force"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

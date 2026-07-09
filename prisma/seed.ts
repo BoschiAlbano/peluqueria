@@ -3,15 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizarUsername, emailSinteticoParaUsername } from "@/lib/auth-username";
 
-// Contraseña de desarrollo para los cajeros de prueba — no se usa en producción.
-const PASSWORD_SEED = "prueba123456";
-
-// Crea (si no existe ya) un cajero con una cuenta de Supabase Auth real y
-// vinculada, para que se pueda loguear de verdad con el flujo actual
-// (login por username, ver lib/auth-username.ts). Antes el seed solo creaba
-// la fila en Prisma sin username/authUserId, así que estos usuarios de
-// prueba nunca podían loguearse.
-async function crearCajeroDePrueba(nombre: string, usernameCrudo: string) {
+// Crea la cuenta del dueño con login real (username, ver lib/auth-username.ts).
+// El login es siempre por username -> email sintético interno, así que el
+// email real no se usa para nada operativo (Supabase Auth lo pide igual,
+// por eso se genera uno sintético a partir del username, no se guarda el
+// real en ningún lado hoy).
+async function crearDueno(nombre: string, usernameCrudo: string, password: string) {
   const username = normalizarUsername(usernameCrudo);
 
   const existente = await prisma.usuario.findUnique({ where: { username } });
@@ -20,12 +17,12 @@ async function crearCajeroDePrueba(nombre: string, usernameCrudo: string) {
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.createUser({
     email: emailSinteticoParaUsername(username),
-    password: PASSWORD_SEED,
+    password,
     email_confirm: true,
   });
 
   if (error || !data.user) {
-    console.warn(`No se pudo crear el login de ${nombre}: ${error?.message ?? "error desconocido"}`);
+    console.warn(`✗ No se pudo crear el login del dueño: ${error?.message ?? "error desconocido"}`);
     return;
   }
 
@@ -34,38 +31,43 @@ async function crearCajeroDePrueba(nombre: string, usernameCrudo: string) {
       authUserId: data.user.id,
       username,
       nombre,
-      rol: "CAJERO",
+      rol: "DUENO",
       esPeluquero: false,
       activo: true,
     },
   });
+
+  console.log(`✓ Dueño creado: usuario "${username}", contraseña "${password}".`);
 }
 
 async function main() {
+  console.log("Sembrando servicios (Corte, Barba)...");
   await prisma.servicio.createMany({
     data: [
       { nombre: "Corte", precio: 8000, cuentaParaBono: true },
       { nombre: "Barba", precio: 4000, cuentaParaBono: false },
-      { nombre: "Afeitado", precio: 5000, cuentaParaBono: false },
     ],
     skipDuplicates: true,
   });
+  console.log("✓ Servicios creados.");
 
+  console.log("Sembrando configuración de comisión (60% peluquero / 40% dueño)...");
   await prisma.configuracionComision.create({
     data: { porcentajePeluquero: 60, porcentajeDueno: 40 },
   });
+  console.log("✓ Comisión configurada.");
 
+  console.log("Sembrando escalones de bono (63 cortes = $5000, 100 cortes = $10000)...");
   await prisma.metaCajero.createMany({
     data: [
-      { umbralCortes: 60, montoBono: 5000 },
+      { umbralCortes: 63, montoBono: 5000 },
       { umbralCortes: 100, montoBono: 10000 },
     ],
     skipDuplicates: true,
   });
+  console.log("✓ Escalones de bono creados.");
 
-  // El dueño NO se crea acá: su cuenta se aprovisiona una única vez a mano
-  // (Service Role Key + vinculación manual, ver plan §2.1) para no terminar
-  // con una segunda cuenta "Dueño" duplicada si el seed se corre de nuevo.
+  console.log("Sembrando peluqueros 1 a 6...");
   await prisma.usuario.createMany({
     data: [
       { nombre: "Peluquero 1", esPeluquero: true },
@@ -77,11 +79,14 @@ async function main() {
     ],
     skipDuplicates: true,
   });
+  console.log("✓ Peluqueros creados.");
 
-  await crearCajeroDePrueba("Juan (Cajero)", "juan");
-  await crearCajeroDePrueba("Ana (Cajera)", "ana");
+  // Sin cajeros de prueba — el dueño los crea desde Configuración cuando los
+  // necesite. Sin cajas ni ventas — arranca en cero.
+  console.log("Sembrando cuenta del dueño...");
+  await crearDueno("El Maestro", "El Maestro", "123456");
 
-  console.log(`Seed completado. Cajeros de prueba: "juan" / "ana", contraseña "${PASSWORD_SEED}".`);
+  console.log("Seed completado.");
 }
 
 main()
