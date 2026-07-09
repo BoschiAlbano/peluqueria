@@ -6,11 +6,17 @@ const ETIQUETA_METODO_PAGO: Record<string, string> = {
   TRANSFERENCIA: "Transferencia",
 };
 
-export function TicketCliente({ venta }: { venta: CrearVentaResult }) {
+export function TicketCliente({
+  venta,
+  copia = false,
+}: {
+  venta: CrearVentaResult;
+  copia?: boolean;
+}) {
   const lineas: string[] = [];
 
   lineas.push(addCenter("El Maestro Peluquería"));
-  lineas.push(addCenter(`Ticket #${venta.numeroTicket}`));
+  lineas.push(addCenter(`Ticket #${venta.numeroTicket}${copia ? " - copia" : ""}`));
   lineas.push(addCenter(new Date(venta.fecha).toLocaleString("es-AR")));
   lineas.push(addSeparator());
 

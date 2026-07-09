@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MetodoPago } from "@/generated/prisma/enums";
 import { revalidatePath } from "next/cache";
 import { requireUsuario } from "@/lib/auth";
+import { inicioDeHoy } from "@/lib/rangos-fecha";
 
 export type LineaVentaInput = {
   peluqueroId: string;
@@ -143,4 +144,31 @@ export async function crearVenta(
       precioCobrado: Number(d.precioCobrado),
     })),
   };
+}
+
+// Ventas del cajero logueado en el día comercial actual (huso horario del
+// negocio, ver lib/rangos-fecha.ts) — para que el cajero pueda controlar lo
+// que vendió y reimprimir un ticket si el original falló al imprimir.
+export async function obtenerVentasDelDia(): Promise<CrearVentaResult[]> {
+  const usuario = await requireUsuario();
+
+  const ventas = await prisma.venta.findMany({
+    where: { cajeroId: usuario.id, fecha: { gte: inicioDeHoy() } },
+    include: { detalles: { include: { servicio: true, peluquero: true } } },
+    orderBy: { fecha: "desc" },
+  });
+
+  return ventas.map((v) => ({
+    ventaId: v.id,
+    numeroTicket: v.numeroTicket,
+    fecha: v.fecha,
+    total: Number(v.total),
+    metodoPago: v.metodoPago,
+    comprobanteTransferenciaUlt4: v.comprobanteTransferenciaUlt4,
+    detalles: v.detalles.map((d) => ({
+      servicioNombre: d.servicio.nombre,
+      peluqueroNombre: d.peluquero.nombre,
+      precioCobrado: Number(d.precioCobrado),
+    })),
+  }));
 }

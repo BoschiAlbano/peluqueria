@@ -1,16 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { SesionCajaCard } from "@/components/pos/sesion-caja-card";
 import { CierreDiaCard } from "@/components/pos/cierre-dia-card";
+import { VentasDiaCard } from "@/components/pos/ventas-dia-card";
 import { obtenerEstadoCierreDia } from "@/actions/caja";
+import { obtenerVentasDelDia } from "@/actions/ventas";
 import { PageHeader } from "@/components/layout/page-header";
 
 export default async function CajaPage() {
-  const [sesionAbierta, estadoCierreDia] = await Promise.all([
+  const [sesionAbierta, estadoCierreDia, ventasDelDia] = await Promise.all([
     prisma.sesionCaja.findFirst({
       where: { horaCierre: null },
       include: { cajero: true },
     }),
     obtenerEstadoCierreDia(),
+    obtenerVentasDelDia(),
   ]);
 
   let sesionInfo = null;
@@ -51,6 +54,8 @@ export default async function CajaPage() {
           hayCajaAbierta={estadoCierreDia.hayCajaAbierta}
         />
       </div>
+
+      <VentasDiaCard ventas={ventasDelDia} />
     </PageHeader>
   );
 }
