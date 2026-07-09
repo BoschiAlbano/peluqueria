@@ -324,7 +324,7 @@ model CierreDia {
 - [x] PWA (instalar como app en el celular del cajero): manifest, íconos (generados desde `public/Logo.svg`), service worker mínimo y responsive (sidebar colapsable en mobile)
 
 ### Fase 3 — Escalabilidad
-- [ ] Portal de solo lectura para peluqueros (ver sus propias ganancias)
+- [x] Portal de solo lectura para peluqueros (ver sus propias ganancias) — sin login: cada peluquero tiene un link privado (`/portal/[token]`) que el dueño genera/regenera/elimina desde Configuración. El token vive en `Usuario.tokenPortal` (único, generado con `crypto.randomBytes`); si se filtra o se pierde, el dueño lo regenera y el link viejo deja de funcionar. Reutiliza `obtenerFilasReporte` de `lib/reportes.ts` filtrado por `peluqueroId`.
 - [ ] Impresión sin diálogo (QZ Tray) para agilizar el POS
 - [ ] Métodos de pago integrados (Mercado Pago u otro)
 - [ ] Soporte multi-sucursal, si el negocio escala

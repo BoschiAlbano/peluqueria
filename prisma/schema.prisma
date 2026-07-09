@@ -24,6 +24,7 @@ model Usuario {
   id          String   @id @default(uuid())
   authUserId  String?  @unique
   username    String?  @unique // login por usuario, no por email (ver lib/auth-username.ts)
+  tokenPortal String?  @unique // link privado de solo lectura para peluqueros, sin login (ver app/portal/[token])
   nombre      String
   rol         Rol?
   esPeluquero Boolean  @default(false)

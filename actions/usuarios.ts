@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireDueno } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -172,6 +173,7 @@ export type PeluqueroInfo = {
   id: string;
   nombre: string;
   activo: boolean;
+  tokenPortal: string | null;
 };
 
 export async function listarPeluqueros(): Promise<PeluqueroInfo[]> {
@@ -182,7 +184,12 @@ export async function listarPeluqueros(): Promise<PeluqueroInfo[]> {
     orderBy: { nombre: "asc" },
   });
 
-  return peluqueros.map((p) => ({ id: p.id, nombre: p.nombre, activo: p.activo }));
+  return peluqueros.map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    activo: p.activo,
+    tokenPortal: p.tokenPortal,
+  }));
 }
 
 export async function crearPeluquero(nombre: string) {
@@ -226,4 +233,29 @@ export async function cambiarEstadoPeluquero(id: string, activo: boolean) {
 
   revalidatePath("/configuracion");
   revalidatePath("/ventas");
+}
+
+export async function generarTokenPortal(id: string): Promise<string> {
+  await requireDueno();
+
+  const token = randomBytes(24).toString("base64url");
+
+  await prisma.usuario.update({
+    where: { id },
+    data: { tokenPortal: token },
+  });
+
+  revalidatePath("/configuracion");
+  return token;
+}
+
+export async function eliminarTokenPortal(id: string) {
+  await requireDueno();
+
+  await prisma.usuario.update({
+    where: { id },
+    data: { tokenPortal: null },
+  });
+
+  revalidatePath("/configuracion");
 }

@@ -5,6 +5,8 @@ import {
   crearPeluquero,
   actualizarPeluquero,
   cambiarEstadoPeluquero,
+  generarTokenPortal,
+  eliminarTokenPortal,
   type PeluqueroInfo,
 } from "@/actions/usuarios";
 import { Button } from "@/components/ui/button";
@@ -66,6 +68,9 @@ function FilaPeluquero({ peluquero }: { peluquero: PeluqueroInfo }) {
         </Badge>
       </TableCell>
       <TableCell>
+        <PortalLinkCell peluquero={peluquero} />
+      </TableCell>
+      <TableCell>
         <Button
           type="button"
           size="sm"
@@ -77,6 +82,61 @@ function FilaPeluquero({ peluquero }: { peluquero: PeluqueroInfo }) {
         </Button>
       </TableCell>
     </TableRow>
+  );
+}
+
+function PortalLinkCell({ peluquero }: { peluquero: PeluqueroInfo }) {
+  const [isPending, startTransition] = useTransition();
+
+  function generar() {
+    startTransition(async () => {
+      try {
+        await generarTokenPortal(peluquero.id);
+        toast.success("Link generado.");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo generar el link.");
+      }
+    });
+  }
+
+  function eliminar() {
+    startTransition(async () => {
+      try {
+        await eliminarTokenPortal(peluquero.id);
+        toast.success("Link eliminado.");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo eliminar el link.");
+      }
+    });
+  }
+
+  function copiar() {
+    if (!peluquero.tokenPortal) return;
+    const link = `${window.location.origin}/portal/${peluquero.tokenPortal}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Link copiado.");
+  }
+
+  if (!peluquero.tokenPortal) {
+    return (
+      <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={generar}>
+        Generar link
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex gap-1">
+      <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={copiar}>
+        Copiar link
+      </Button>
+      <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={generar}>
+        Regenerar
+      </Button>
+      <Button type="button" size="sm" variant="destructive" disabled={isPending} onClick={eliminar}>
+        Eliminar
+      </Button>
+    </div>
   );
 }
 
@@ -103,6 +163,7 @@ export function PeluquerosForm({ peluqueros }: { peluqueros: PeluqueroInfo[] }) 
           <TableRow>
             <TableHead>Nombre</TableHead>
             <TableHead>Estado</TableHead>
+            <TableHead>Portal</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -112,7 +173,7 @@ export function PeluquerosForm({ peluqueros }: { peluqueros: PeluqueroInfo[] }) 
           ))}
           {!peluqueros.length && (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-muted-foreground">
+              <TableCell colSpan={4} className="text-center text-muted-foreground">
                 Sin peluqueros creados.
               </TableCell>
             </TableRow>

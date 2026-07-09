@@ -17,6 +17,7 @@ export type FilaReporte = {
   precioCobrado: number;
   comisionPeluquero: number;
   comisionDueno: number;
+  cuentaParaBono: boolean;
 };
 
 export async function obtenerFilasReporte(filtro: FiltroReporte): Promise<FilaReporte[]> {
@@ -39,6 +40,7 @@ export async function obtenerFilasReporte(filtro: FiltroReporte): Promise<FilaRe
     precioCobrado: Number(d.precioCobrado),
     comisionPeluquero: Number(d.comisionPeluquero),
     comisionDueno: Number(d.comisionDueno),
+    cuentaParaBono: d.servicio.cuentaParaBono,
   }));
 }
 

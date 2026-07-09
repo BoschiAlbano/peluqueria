@@ -28,7 +28,8 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const esRutaPublica = path === "/login" || path === "/" || path.startsWith("/api");
+  const esRutaPublica =
+    path === "/login" || path === "/" || path.startsWith("/api") || path.startsWith("/portal");
 
   if (!user && !esRutaPublica) {
     const url = request.nextUrl.clone();
