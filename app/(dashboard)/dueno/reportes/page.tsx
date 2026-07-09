@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioActual } from "@/lib/auth";
-import { obtenerFilasReporte, rangoDesdeParams } from "@/lib/reportes";
+import { obtenerFilasReportePaginado, obtenerTotalesReporte, rangoDesdeParams } from "@/lib/reportes";
 import { fechaComercialYMD } from "@/lib/rangos-fecha";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ export default async function ReportesPage({
     hasta?: string;
     peluqueroId?: string;
     servicioId?: string;
+    page?: string;
   }>;
 }) {
   const usuario = await obtenerUsuarioActual();
@@ -49,9 +51,11 @@ export default async function ReportesPage({
   const { desde, hasta } = rangoDesdeParams(params.desde, params.hasta);
   const peluqueroId = params.peluqueroId || undefined;
   const servicioId = params.servicioId || undefined;
+  const pagina = Math.max(1, Number(params.page) || 1);
 
-  const [filas, peluqueros, servicios] = await Promise.all([
-    obtenerFilasReporte({ desde, hasta, peluqueroId, servicioId }),
+  const [{ filas, total, totalPaginas }, totales, peluqueros, servicios] = await Promise.all([
+    obtenerFilasReportePaginado({ desde, hasta, peluqueroId, servicioId }, pagina),
+    obtenerTotalesReporte({ desde, hasta, peluqueroId, servicioId }),
     prisma.usuario.findMany({
       where: { esPeluquero: true },
       orderBy: { nombre: "asc" },
@@ -59,12 +63,7 @@ export default async function ReportesPage({
     prisma.servicio.findMany({ orderBy: { nombre: "asc" } }),
   ]);
 
-  const totalVentas = filas.reduce((acc, f) => acc + f.precioCobrado, 0);
-  const totalComisionPeluqueros = filas.reduce(
-    (acc, f) => acc + f.comisionPeluquero,
-    0,
-  );
-  const totalComisionDueno = filas.reduce((acc, f) => acc + f.comisionDueno, 0);
+  const { totalVentas, totalComisionPeluqueros, totalComisionDueno } = totales;
 
   const queryString = new URLSearchParams({
     desde: aInputDate(desde),
@@ -158,7 +157,7 @@ export default async function ReportesPage({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">{formatoMoneda.format(totalVentas)}</p>
-            <p className="text-xs text-muted-foreground">{filas.length} líneas</p>
+            <p className="text-xs text-muted-foreground">{total} líneas</p>
           </CardContent>
         </Card>
         <Card>
@@ -227,6 +226,38 @@ export default async function ReportesPage({
               )}
             </TableBody>
           </Table>
+
+          {totalPaginas > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Página {pagina} de {totalPaginas}
+              </p>
+              <div className="flex gap-2">
+                {pagina > 1 ? (
+                  <Link href={`?${queryString}&page=${pagina - 1}`}>
+                    <Button type="button" variant="outline" size="sm">
+                      Anterior
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button type="button" variant="outline" size="sm" disabled>
+                    Anterior
+                  </Button>
+                )}
+                {pagina < totalPaginas ? (
+                  <Link href={`?${queryString}&page=${pagina + 1}`}>
+                    <Button type="button" variant="outline" size="sm">
+                      Siguiente
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button type="button" variant="outline" size="sm" disabled>
+                    Siguiente
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </PageHeader>

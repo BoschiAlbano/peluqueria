@@ -20,18 +20,23 @@ export type FilaReporte = {
   cuentaParaBono: boolean;
 };
 
-export async function obtenerFilasReporte(filtro: FiltroReporte): Promise<FilaReporte[]> {
-  const detalles = await prisma.ventaDetalle.findMany({
-    where: {
-      venta: { fecha: { gte: filtro.desde, lte: filtro.hasta } },
-      ...(filtro.peluqueroId ? { peluqueroId: filtro.peluqueroId } : {}),
-      ...(filtro.servicioId ? { servicioId: filtro.servicioId } : {}),
-    },
-    include: { venta: true, peluquero: true, servicio: true },
-    orderBy: { venta: { fecha: "asc" } },
-  });
+function construirWhereReporte(filtro: FiltroReporte) {
+  return {
+    venta: { fecha: { gte: filtro.desde, lte: filtro.hasta } },
+    ...(filtro.peluqueroId ? { peluqueroId: filtro.peluqueroId } : {}),
+    ...(filtro.servicioId ? { servicioId: filtro.servicioId } : {}),
+  };
+}
 
-  return detalles.map((d) => ({
+function mapearFila(d: {
+  venta: { fecha: Date; numeroTicket: number; metodoPago: string };
+  peluquero: { nombre: string };
+  servicio: { nombre: string; cuentaParaBono: boolean };
+  precioCobrado: unknown;
+  comisionPeluquero: unknown;
+  comisionDueno: unknown;
+}): FilaReporte {
+  return {
     fecha: d.venta.fecha,
     numeroTicket: d.venta.numeroTicket,
     peluqueroNombre: d.peluquero.nombre,
@@ -41,7 +46,68 @@ export async function obtenerFilasReporte(filtro: FiltroReporte): Promise<FilaRe
     comisionPeluquero: Number(d.comisionPeluquero),
     comisionDueno: Number(d.comisionDueno),
     cuentaParaBono: d.servicio.cuentaParaBono,
-  }));
+  };
+}
+
+// Usada por la exportación a CSV, que necesita todas las filas del rango
+// (no tiene sentido paginar un archivo descargable).
+export async function obtenerFilasReporte(filtro: FiltroReporte): Promise<FilaReporte[]> {
+  const detalles = await prisma.ventaDetalle.findMany({
+    where: construirWhereReporte(filtro),
+    include: { venta: true, peluquero: true, servicio: true },
+    orderBy: { venta: { fecha: "asc" } },
+  });
+
+  return detalles.map(mapearFila);
+}
+
+export const FILAS_POR_PAGINA = 10;
+
+export async function obtenerFilasReportePaginado(
+  filtro: FiltroReporte,
+  pagina: number,
+): Promise<{ filas: FilaReporte[]; total: number; totalPaginas: number }> {
+  const where = construirWhereReporte(filtro);
+
+  const [detalles, total] = await Promise.all([
+    prisma.ventaDetalle.findMany({
+      where,
+      include: { venta: true, peluquero: true, servicio: true },
+      orderBy: { venta: { fecha: "asc" } },
+      skip: (pagina - 1) * FILAS_POR_PAGINA,
+      take: FILAS_POR_PAGINA,
+    }),
+    prisma.ventaDetalle.count({ where }),
+  ]);
+
+  return {
+    filas: detalles.map(mapearFila),
+    total,
+    totalPaginas: Math.max(1, Math.ceil(total / FILAS_POR_PAGINA)),
+  };
+}
+
+// Totales del rango completo (no solo la página actual) — se calculan con un
+// aggregate en la base en vez de traer todas las filas a JS para sumarlas.
+export async function obtenerTotalesReporte(filtro: FiltroReporte): Promise<{
+  totalVentas: number;
+  totalComisionPeluqueros: number;
+  totalComisionDueno: number;
+}> {
+  const resultado = await prisma.ventaDetalle.aggregate({
+    where: construirWhereReporte(filtro),
+    _sum: {
+      precioCobrado: true,
+      comisionPeluquero: true,
+      comisionDueno: true,
+    },
+  });
+
+  return {
+    totalVentas: Number(resultado._sum.precioCobrado ?? 0),
+    totalComisionPeluqueros: Number(resultado._sum.comisionPeluquero ?? 0),
+    totalComisionDueno: Number(resultado._sum.comisionDueno ?? 0),
+  };
 }
 
 // Convierte "YYYY-MM-DD" (input type=date) a un rango [00:00:00, 23:59:59.999]
