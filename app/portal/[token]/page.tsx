@@ -2,7 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerFilasReporte } from "@/lib/reportes";
-import { inicioDeRango, type RangoFecha } from "@/lib/rangos-fecha";
+import { obtenerCortesHoyEnVivo } from "@/actions/caja";
+import {
+  inicioDeHoy,
+  inicioDeRango,
+  type RangoFecha,
+} from "@/lib/rangos-fecha";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -35,7 +40,9 @@ export default async function PortalPeluqueroPage({
 }) {
   const { token } = await params;
 
-  const peluquero = await prisma.usuario.findUnique({ where: { tokenPortal: token } });
+  const peluquero = await prisma.usuario.findUnique({
+    where: { tokenPortal: token },
+  });
   if (!peluquero || !peluquero.esPeluquero || !peluquero.activo) {
     notFound();
   }
@@ -45,24 +52,48 @@ export default async function PortalPeluqueroPage({
     rangoParam === "semana" || rangoParam === "mes" ? rangoParam : "hoy";
 
   const desde = inicioDeRango(rango);
-  const filas = await obtenerFilasReporte({ desde, hasta: new Date(), peluqueroId: peluquero.id });
+
+  const [filas, miAporteHoy, cortesHoy, escalones] = await Promise.all([
+    obtenerFilasReporte({
+      desde,
+      hasta: new Date(),
+      peluqueroId: peluquero.id,
+    }),
+    prisma.ventaDetalle.count({
+      where: {
+        peluqueroId: peluquero.id,
+        servicio: { cuentaParaBono: true },
+        venta: { fecha: { gte: inicioDeHoy() } },
+      },
+    }),
+    obtenerCortesHoyEnVivo(),
+    prisma.metaCajero.findMany({
+      where: { activo: true },
+      orderBy: { umbralCortes: "asc" },
+    }),
+  ]);
 
   const totalGanancia = filas.reduce((acc, f) => acc + f.comisionPeluquero, 0);
-  const totalCortes = filas.filter((f) => f.cuentaParaBono).length;
   const totalServicios = filas.length;
+  const proximoEscalon = escalones.find((e) => e.umbralCortes > cortesHoy);
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto max-w-3xl space-y-4">
         <div>
           <h1 className="text-xl font-semibold">{peluquero.nombre}</h1>
-          <p className="text-sm text-muted-foreground">Tus ganancias y servicios.</p>
+          <p className="text-sm text-muted-foreground">
+            Tus ganancias y servicios.
+          </p>
         </div>
 
         <div className="flex gap-2">
           {RANGOS.map((r) => (
             <Link key={r.valor} href={`/portal/${token}?rango=${r.valor}`}>
-              <Button variant={rango === r.valor ? "default" : "outline"} size="sm">
+              <Button
+                variant={rango === r.valor ? "default" : "outline"}
+                size="sm"
+              >
                 {r.etiqueta}
               </Button>
             </Link>
@@ -72,23 +103,41 @@ export default async function PortalPeluqueroPage({
         <div className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Tu ganancia</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">
+                Tu ganancia
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold">{formatoMoneda.format(totalGanancia)}</p>
+              <p className="text-2xl font-semibold">
+                {formatoMoneda.format(totalGanancia)}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Cortes</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">
+                Avance del bono hoy
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold">{totalCortes}</p>
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-2xl font-semibold">{miAporteHoy}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-semibold">
+                    {cortesHoy}
+                    {proximoEscalon ? `/${proximoEscalon.umbralCortes}` : ""}
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Servicios</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">
+                Servicios
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold">{totalServicios}</p>
@@ -123,7 +172,10 @@ export default async function PortalPeluqueroPage({
                 ))}
                 {!filas.length && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground"
+                    >
                       Sin servicios en este rango.
                     </TableCell>
                   </TableRow>

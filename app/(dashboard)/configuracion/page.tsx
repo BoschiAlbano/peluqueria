@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioActual } from "@/lib/auth";
 import { listarCajeros, listarPeluqueros } from "@/actions/usuarios";
-import { listarMetas } from "@/actions/configuracion";
-import { PreciosForm } from "@/components/configuracion/precios-form";
+import { listarMetas, listarServicios } from "@/actions/configuracion";
+import { ServiciosForm } from "@/components/configuracion/servicios-form";
 import { ComisionForm } from "@/components/configuracion/comision-form";
 import { CajerosForm } from "@/components/configuracion/cajeros-form";
 import { PeluquerosForm } from "@/components/configuracion/peluqueros-form";
@@ -17,60 +17,55 @@ export default async function ConfiguracionPage() {
     redirect("/ventas");
   }
 
-  const [servicios, configComision, cajeros, peluqueros, metas] = await Promise.all([
-    prisma.servicio.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    prisma.configuracionComision.findFirst({ orderBy: { vigenteDesde: "desc" } }),
-    listarCajeros(),
-    listarPeluqueros(),
-    listarMetas(),
-  ]);
+  const [servicios, configComision, cajeros, peluqueros, metas] =
+    await Promise.all([
+      listarServicios(),
+      prisma.configuracionComision.findFirst({
+        orderBy: { vigenteDesde: "desc" },
+      }),
+      listarCajeros(),
+      listarPeluqueros(),
+      listarMetas(),
+    ]);
 
   return (
     <PageHeader
       title="Configuración"
       description="Precios de servicios, porcentaje de comisión, cajeros y peluqueros."
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Servicios</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PreciosForm
-              servicios={servicios.map((s) => ({
-                id: s.id,
-                nombre: s.nombre,
-                precio: Number(s.precio),
-              }))}
-            />
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Servicios</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ServiciosForm servicios={servicios} />
+        </CardContent>
+      </Card>
 
-        <ComisionForm
-          porcentajePeluqueroActual={Number(configComision?.porcentajePeluquero ?? 60)}
-          porcentajeDuenoActual={Number(configComision?.porcentajeDueno ?? 40)}
-        />
-      </div>
+      <ComisionForm
+        porcentajePeluqueroActual={Number(
+          configComision?.porcentajePeluquero ?? 60,
+        )}
+        porcentajeDuenoActual={Number(configComision?.porcentajeDueno ?? 40)}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cajeros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CajerosForm cajeros={cajeros} />
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Cajeros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CajerosForm cajeros={cajeros} />
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Peluqueros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PeluquerosForm peluqueros={peluqueros} />
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Peluqueros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PeluquerosForm peluqueros={peluqueros} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

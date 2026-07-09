@@ -67,18 +67,18 @@ export default async function DuenoPage({
 
   const rankingMap = new Map<
     string,
-    { nombre: string; cortes: number; servicios: number; plataGenerada: number; comision: number }
+    { nombre: string; bono: number; servicios: number; plataGenerada: number; comision: number }
   >();
   for (const d of detallesRango) {
     const entry = rankingMap.get(d.peluqueroId) ?? {
       nombre: d.peluquero.nombre,
-      cortes: 0,
+      bono: 0,
       servicios: 0,
       plataGenerada: 0,
       comision: 0,
     };
     entry.servicios += 1;
-    if (d.servicio.cuentaParaBono) entry.cortes += 1;
+    if (d.servicio.cuentaParaBono) entry.bono += 1;
     entry.plataGenerada += Number(d.precioCobrado);
     entry.comision += Number(d.comisionPeluquero);
     rankingMap.set(d.peluqueroId, entry);
@@ -132,13 +132,13 @@ export default async function DuenoPage({
           <CardContent>
             <p className="text-2xl font-semibold">
               {cortesHoy}
-              {proximoEscalon ? `/${proximoEscalon.umbralCortes}` : ""} cortes
+              {proximoEscalon ? `/${proximoEscalon.umbralCortes}` : ""}
             </p>
             <p className="text-xs text-muted-foreground">
               {escalonAlcanzado
                 ? `Bono alcanzado: ${formatoMoneda.format(Number(escalonAlcanzado.montoBono))} por sesión`
                 : proximoEscalon
-                  ? `Faltan ${proximoEscalon.umbralCortes - cortesHoy} cortes para el próximo bono`
+                  ? `Faltan ${proximoEscalon.umbralCortes - cortesHoy} servicios para el próximo bono`
                   : "Sin escalones de bono configurados"}
             </p>
           </CardContent>
@@ -154,7 +154,7 @@ export default async function DuenoPage({
             <TableHeader>
               <TableRow>
                 <TableHead>Peluquero</TableHead>
-                <TableHead className="text-right">Cortes</TableHead>
+                <TableHead className="text-right">Bono</TableHead>
                 <TableHead className="text-right">Servicios</TableHead>
                 <TableHead className="text-right">Plata generada</TableHead>
                 <TableHead className="text-right">Comisión ({porcentajePeluquero}%)</TableHead>
@@ -164,7 +164,7 @@ export default async function DuenoPage({
               {ranking.map((r) => (
                 <TableRow key={r.nombre}>
                   <TableCell>{r.nombre}</TableCell>
-                  <TableCell className="text-right">{r.cortes}</TableCell>
+                  <TableCell className="text-right">{r.bono}</TableCell>
                   <TableCell className="text-right">{r.servicios}</TableCell>
                   <TableCell className="text-right">
                     {formatoMoneda.format(r.plataGenerada)}

@@ -4,19 +4,74 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireDueno } from "@/lib/auth";
 
-export async function actualizarPrecioServicio(servicioId: string, precio: number) {
+export type ServicioInfo = {
+  id: string;
+  nombre: string;
+  precio: number;
+  cuentaParaBono: boolean;
+  activo: boolean;
+};
+
+export async function listarServicios(): Promise<ServicioInfo[]> {
   await requireDueno();
 
+  const servicios = await prisma.servicio.findMany({ orderBy: { nombre: "asc" } });
+
+  return servicios.map((s) => ({
+    id: s.id,
+    nombre: s.nombre,
+    precio: Number(s.precio),
+    cuentaParaBono: s.cuentaParaBono,
+    activo: s.activo,
+  }));
+}
+
+function validarServicio(nombre: string, precio: number) {
+  if (!nombre.trim()) {
+    throw new Error("Falta el nombre.");
+  }
   if (!Number.isFinite(precio) || precio <= 0) {
     throw new Error("El precio debe ser un número mayor a 0.");
   }
+}
 
-  await prisma.servicio.update({
-    where: { id: servicioId },
-    data: { precio },
+export async function crearServicio(nombre: string, precio: number, cuentaParaBono: boolean) {
+  await requireDueno();
+  validarServicio(nombre, precio);
+
+  await prisma.servicio.create({
+    data: { nombre: nombre.trim(), precio, cuentaParaBono, activo: true },
   });
 
   revalidatePath("/configuracion");
+  revalidatePath("/ventas");
+}
+
+export async function actualizarServicio(
+  id: string,
+  nombre: string,
+  precio: number,
+  cuentaParaBono: boolean,
+) {
+  await requireDueno();
+  validarServicio(nombre, precio);
+
+  await prisma.servicio.update({
+    where: { id },
+    data: { nombre: nombre.trim(), precio, cuentaParaBono },
+  });
+
+  revalidatePath("/configuracion");
+  revalidatePath("/ventas");
+}
+
+export async function cambiarEstadoServicio(id: string, activo: boolean) {
+  await requireDueno();
+
+  await prisma.servicio.update({ where: { id }, data: { activo } });
+
+  revalidatePath("/configuracion");
+  revalidatePath("/ventas");
 }
 
 export type ActualizarComisionInput = {
