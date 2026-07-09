@@ -11,7 +11,9 @@ export default function Home() {
           pagina de inicio
         </h1>
         {/* Login */}
-        <Button render={<Link href="/login" />}>Login</Button>
+        <Button render={<Link href="/login" />} nativeButton={false}>
+          Login
+        </Button>
       </main>
     </div>
   );
