@@ -3,7 +3,6 @@ import { addCenter, addExtremes, addLine, addSeparator, formatoMonto } from "@/l
 
 const ETIQUETA_METODO_PAGO: Record<string, string> = {
   EFECTIVO: "Efectivo",
-  TARJETA: "Tarjeta",
   TRANSFERENCIA: "Transferencia",
 };
 

@@ -52,7 +52,6 @@ const formatoMoneda = new Intl.NumberFormat("es-AR", {
 
 const ETIQUETA_METODO_PAGO: Record<MetodoPago, string> = {
   [MetodoPago.EFECTIVO]: "Efectivo",
-  [MetodoPago.TARJETA]: "Tarjeta",
   [MetodoPago.TRANSFERENCIA]: "Transferencia",
 };
 
@@ -98,7 +97,9 @@ export function PosForm({
         precio: servicio.precio,
       },
     ]);
-    setPeluqueroId("");
+    // El peluquero se mantiene seleccionado: lo más común es que el mismo
+    // peluquero haga varios servicios seguidos al mismo cliente (corte +
+    // barba), así que no tiene sentido pedirlo de nuevo cada vez.
     setServicioId("");
   }
 
@@ -211,7 +212,6 @@ export function PosForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={MetodoPago.EFECTIVO}>Efectivo</SelectItem>
-                <SelectItem value={MetodoPago.TARJETA}>Tarjeta</SelectItem>
                 <SelectItem value={MetodoPago.TRANSFERENCIA}>
                   Transferencia
                 </SelectItem>

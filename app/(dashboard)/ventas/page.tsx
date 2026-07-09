@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PosForm } from "@/components/pos/pos-form";
 import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
 
 export default async function VentasPage() {
   const [servicios, peluqueros, sesionAbierta] = await Promise.all([
@@ -25,13 +27,18 @@ export default async function VentasPage() {
           peluqueros={peluqueros.map((p) => ({ id: p.id, nombre: p.nombre }))}
         />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No hay una caja abierta. Abrila desde{" "}
-          <Link href="/caja" className="underline">
-            Caja
-          </Link>{" "}
-          para poder cargar ventas.
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-10 text-center">
+          <Lock className="size-8 text-muted-foreground" />
+          <div className="space-y-1">
+            <p className="font-medium">No hay una caja abierta</p>
+            <p className="text-sm text-muted-foreground">
+              Abrí una sesión de caja para poder cargar ventas.
+            </p>
+          </div>
+          <Button render={<Link href="/caja" />} nativeButton={false}>
+            Ir a Caja
+          </Button>
+        </div>
       )}
     </PageHeader>
   );
