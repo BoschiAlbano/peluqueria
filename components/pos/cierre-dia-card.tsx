@@ -32,6 +32,19 @@ export function CierreDiaCard({
   const imprimirTickets = useReactToPrint({ contentRef: ticketRef });
 
   function handleCerrarDia() {
+    toast.warning("¿Estás seguro que querés cerrar la caja del día?", {
+      action: {
+        label: "Sí, cerrar",
+        onClick: confirmarCerrarDia,
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {},
+      },
+    });
+  }
+
+  function confirmarCerrarDia() {
     startTransition(async () => {
       try {
         const resultado = await cerrarDia();

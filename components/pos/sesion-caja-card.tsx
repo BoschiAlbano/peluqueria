@@ -59,9 +59,22 @@ export function SesionCajaCard({
   function handleCerrar() {
     if (!sesion) return;
 
+    toast.warning("¿Estás seguro que querés cerrar la caja?", {
+      action: {
+        label: "Sí, cerrar",
+        onClick: () => confirmarCerrar(sesion.id),
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {},
+      },
+    });
+  }
+
+  function confirmarCerrar(sesionId: string) {
     startTransition(async () => {
       try {
-        const resultado = await cerrarSesion(sesion.id);
+        const resultado = await cerrarSesion(sesionId);
         setResumen(resultado);
         toast.success("Caja cerrada.");
       } catch (error) {
