@@ -1,10 +1,12 @@
 import type { ResumenSesionCajero } from "@/actions/caja";
-import { addCenter, addExtremes, addLine, addSeparator, formatoMonto } from "@/lib/ticket-texto";
-
-const ETIQUETA_METODO_PAGO: Record<string, string> = {
-  EFECTIVO: "Efectivo",
-  TRANSFERENCIA: "Transferencia",
-};
+import {
+  ETIQUETA_METODO_PAGO,
+  addCenter,
+  addExtremes,
+  addLine,
+  addSeparator,
+  formatoMonto,
+} from "@/lib/ticket-texto";
 
 export function TicketResumenSesion({ sesion }: { sesion: ResumenSesionCajero }) {
   const lineas: string[] = [];
@@ -22,6 +24,17 @@ export function TicketResumenSesion({ sesion }: { sesion: ResumenSesionCajero })
   );
   lineas.push(addSeparator());
 
+  lineas.push(addLine("Servicios"));
+  if (sesion.servicios.length) {
+    for (const s of sesion.servicios) {
+      lineas.push(addExtremes(`${s.servicioNombre} x${s.cantidad}`, formatoMonto(s.total)));
+    }
+  } else {
+    lineas.push(addLine("Sin servicios."));
+  }
+
+  lineas.push(addSeparator());
+
   lineas.push(addLine("Formas de pago"));
   if (sesion.totalesPorMetodoPago.length) {
     for (const m of sesion.totalesPorMetodoPago) {
@@ -34,17 +47,6 @@ export function TicketResumenSesion({ sesion }: { sesion: ResumenSesionCajero })
     }
   } else {
     lineas.push(addLine("Sin ventas."));
-  }
-
-  lineas.push(addSeparator());
-
-  lineas.push(addLine("Servicios"));
-  if (sesion.servicios.length) {
-    for (const s of sesion.servicios) {
-      lineas.push(addExtremes(`${s.servicioNombre} x${s.cantidad}`, formatoMonto(s.total)));
-    }
-  } else {
-    lineas.push(addLine("Sin servicios."));
   }
 
   lineas.push(addSeparator());

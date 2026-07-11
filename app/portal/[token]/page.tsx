@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerFilasReporte } from "@/lib/reportes";
-import { obtenerCortesHoyEnVivo } from "@/actions/caja";
 import {
   inicioDeHoy,
   inicioDeRango,
@@ -53,7 +52,7 @@ export default async function PortalPeluqueroPage({
 
   const desde = inicioDeRango(rango);
 
-  const [filas, miAporteHoy, cortesHoy, escalones] = await Promise.all([
+  const [filas, miAporteHoy] = await Promise.all([
     obtenerFilasReporte({
       desde,
       hasta: new Date(),
@@ -66,16 +65,10 @@ export default async function PortalPeluqueroPage({
         venta: { fecha: { gte: inicioDeHoy() } },
       },
     }),
-    obtenerCortesHoyEnVivo(),
-    prisma.metaCajero.findMany({
-      where: { activo: true },
-      orderBy: { umbralCortes: "asc" },
-    }),
   ]);
 
   const totalGanancia = filas.reduce((acc, f) => acc + f.comisionPeluquero, 0);
   const totalServicios = filas.length;
-  const proximoEscalon = escalones.find((e) => e.umbralCortes > cortesHoy);
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
@@ -116,21 +109,11 @@ export default async function PortalPeluqueroPage({
           <Card>
             <CardHeader>
               <CardTitle className="text-sm text-muted-foreground">
-                Avance del bono hoy
+                Tu aporte al bono — hoy
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-2xl font-semibold">{miAporteHoy}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-semibold">
-                    {cortesHoy}
-                    {proximoEscalon ? `/${proximoEscalon.umbralCortes}` : ""}
-                  </p>
-                </div>
-              </div>
+              <p className="text-2xl font-semibold">{miAporteHoy}</p>
             </CardContent>
           </Card>
           <Card>

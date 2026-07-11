@@ -1,13 +1,25 @@
 import Link from "next/link";
+import { Eye } from "lucide-react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioActual } from "@/lib/auth";
-import { obtenerFilasReportePaginado, obtenerTotalesReporte, rangoDesdeParams } from "@/lib/reportes";
-import { fechaComercialYMD } from "@/lib/rangos-fecha";
+import {
+  obtenerCierresHistoricos,
+  obtenerFilasReportePaginado,
+  obtenerTotalesReporte,
+  rangoDesdeParams,
+} from "@/lib/reportes";
+import { fechaComercialYMD, formatoFechaSoloDia } from "@/lib/rangos-fecha";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
 import { DatePickerField } from "@/components/reportes/date-picker-field";
 
 const formatoMoneda = new Intl.NumberFormat("es-AR", {
@@ -53,14 +66,24 @@ export default async function ReportesPage({
   const servicioId = params.servicioId || undefined;
   const pagina = Math.max(1, Number(params.page) || 1);
 
-  const [{ filas, total, totalPaginas }, totales, peluqueros, servicios] = await Promise.all([
-    obtenerFilasReportePaginado({ desde, hasta, peluqueroId, servicioId }, pagina),
+  const [
+    { filas, total, totalPaginas },
+    totales,
+    peluqueros,
+    servicios,
+    cierres,
+  ] = await Promise.all([
+    obtenerFilasReportePaginado(
+      { desde, hasta, peluqueroId, servicioId },
+      pagina,
+    ),
     obtenerTotalesReporte({ desde, hasta, peluqueroId, servicioId }),
     prisma.usuario.findMany({
       where: { esPeluquero: true },
       orderBy: { nombre: "asc" },
     }),
     prisma.servicio.findMany({ orderBy: { nombre: "asc" } }),
+    obtenerCierresHistoricos(desde, hasta),
   ]);
 
   const { totalVentas, totalComisionPeluqueros, totalComisionDueno } = totales;
@@ -153,11 +176,15 @@ export default async function ReportesPage({
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Ventas</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">
+              Ventas
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{formatoMoneda.format(totalVentas)}</p>
-            <p className="text-xs text-muted-foreground">{total} líneas</p>
+            <p className="text-2xl font-semibold">
+              {formatoMoneda.format(totalVentas)}
+            </p>
+            <p className="text-xs text-muted-foreground">{total} Servicios</p>
           </CardContent>
         </Card>
         <Card>
@@ -174,7 +201,9 @@ export default async function ReportesPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Ganancia del dueño</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">
+              Ganancia del dueño
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">
@@ -219,7 +248,10 @@ export default async function ReportesPage({
               ))}
               {!filas.length && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center text-muted-foreground"
+                  >
                     Sin ventas en este rango.
                   </TableCell>
                 </TableRow>
@@ -258,6 +290,74 @@ export default async function ReportesPage({
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cierres de caja</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Cajero</TableHead>
+                <TableHead className="text-right">Cortes</TableHead>
+                <TableHead className="text-right">Sesiones</TableHead>
+                <TableHead className="text-right">Sueldo</TableHead>
+                <TableHead className="text-right">Bono</TableHead>
+                <TableHead>Bono alcanzado</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cierres.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell>{formatoFechaSoloDia(c.fecha)}</TableCell>
+                  <TableCell>{c.cajeroNombre}</TableCell>
+                  <TableCell className="text-right">
+                    {c.totalCortesDia}
+                  </TableCell>
+                  <TableCell className="text-right">{c.sesiones}</TableCell>
+                  <TableCell className="text-right">
+                    {formatoMoneda.format(c.sueldoTotal)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatoMoneda.format(c.bonoTotal)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={c.bonoAlcanzado ? "default" : "secondary"}>
+                      {c.bonoAlcanzado ? "Sí" : "No"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/cierre-caja/detalle/${c.id}`}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Ver detalle"
+                      >
+                        <Eye />
+                        <span className="sr-only">Ver detalle</span>
+                      </Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!cierres.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="text-center text-muted-foreground"
+                  >
+                    Sin cierres de caja en este rango.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </PageHeader>

@@ -13,7 +13,8 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "tsx scripts/borrar-auth-usuarios.ts && prisma migrate reset --force"
+    "db:reset": "tsx scripts/borrar-auth-usuarios.ts && prisma migrate reset --force",
+    "test:borrar-cajas-hoy": "tsx scripts/borrar-cajas-de-hoy.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

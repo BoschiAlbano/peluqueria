@@ -122,6 +122,42 @@ export function rangoDesdeParams(desdeStr?: string, hastaStr?: string): { desde:
   return { desde, hasta };
 }
 
+export type FilaCierre = {
+  id: string;
+  fecha: Date;
+  cajeroNombre: string;
+  totalCortesDia: number;
+  bonoAlcanzado: boolean;
+  montoBonoPorCaja: number | null;
+  sesiones: number;
+  sueldoTotal: number;
+  bonoTotal: number;
+};
+
+// Historial de cierres de caja (sueldo + bono liquidado por cajero, por
+// día) — vive en Reportes porque es la misma audiencia (dueño) y el mismo
+// patrón (rango de fechas) que el resto de la página; no hace falta una
+// página separada.
+export async function obtenerCierresHistoricos(desde: Date, hasta: Date): Promise<FilaCierre[]> {
+  const cierres = await prisma.cierreDia.findMany({
+    where: { fecha: { gte: desde, lte: hasta } },
+    include: { cajero: true, sesionesCaja: true },
+    orderBy: { fecha: "desc" },
+  });
+
+  return cierres.map((c) => ({
+    id: c.id,
+    fecha: c.fecha,
+    cajeroNombre: c.cajero.nombre,
+    totalCortesDia: c.totalCortesDia,
+    bonoAlcanzado: c.bonoAlcanzado,
+    montoBonoPorCaja: c.montoBonoPorCaja !== null ? Number(c.montoBonoPorCaja) : null,
+    sesiones: c.sesionesCaja.length,
+    sueldoTotal: c.sesionesCaja.reduce((acc, s) => acc + Number(s.sueldoBaseSesion ?? 0), 0),
+    bonoTotal: c.sesionesCaja.reduce((acc, s) => acc + Number(s.bonoSesion ?? 0), 0),
+  }));
+}
+
 function escaparCsv(valor: string | number): string {
   const s = String(valor);
   if (/[",\n]/.test(s)) {

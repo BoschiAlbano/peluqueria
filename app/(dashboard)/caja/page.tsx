@@ -1,20 +1,28 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { obtenerUsuarioActual } from "@/lib/auth";
 import { SesionCajaCard } from "@/components/pos/sesion-caja-card";
-import { CierreDiaCard } from "@/components/pos/cierre-dia-card";
 import { VentasDiaCard } from "@/components/pos/ventas-dia-card";
-import { obtenerEstadoCierreDia } from "@/actions/caja";
-import { obtenerVentasDelDia } from "@/actions/ventas";
+import { TotalesHoyCard } from "@/components/pos/totales-hoy-card";
+import { obtenerTotalesDeLaSesion } from "@/actions/caja";
+import { obtenerVentasDeLaSesionActual } from "@/actions/ventas";
 import { PageHeader } from "@/components/layout/page-header";
 
 export default async function CajaPage() {
-  const [sesionAbierta, estadoCierreDia, ventasDelDia] = await Promise.all([
-    prisma.sesionCaja.findFirst({
-      where: { horaCierre: null },
-      include: { cajero: true },
-    }),
-    obtenerEstadoCierreDia(),
-    obtenerVentasDelDia(),
-  ]);
+  const usuario = await obtenerUsuarioActual();
+  if (!usuario) {
+    redirect("/login");
+  }
+
+  const [sesionAbierta, ventasDeLaSesion, totalesDeLaSesion] =
+    await Promise.all([
+      prisma.sesionCaja.findFirst({
+        where: { horaCierre: null },
+        include: { cajero: true },
+      }),
+      obtenerVentasDeLaSesionActual(),
+      obtenerTotalesDeLaSesion(),
+    ]);
 
   let sesionInfo = null;
   let totalVentasSesion = 0;
@@ -27,7 +35,8 @@ export default async function CajaPage() {
 
     totalVentasSesion = ventas.reduce((acc, v) => acc + Number(v.total), 0);
     const cortesRegistrados = ventas.reduce(
-      (acc, v) => acc + v.detalles.filter((d) => d.servicio.cuentaParaBono).length,
+      (acc, v) =>
+        acc + v.detalles.filter((d) => d.servicio.cuentaParaBono).length,
       0,
     );
 
@@ -42,20 +51,16 @@ export default async function CajaPage() {
 
   return (
     <PageHeader
-      title="Caja"
-      description="Abrí y cerrá sesiones de caja durante el día (mañana, tarde, lo que haga falta), y liquidá sueldo + bono al cerrar la caja del día."
+      title="Caja Actual"
+      description="Abrí y cerrá sesiones de caja durante el día (mañana, tarde, lo que haga falta)."
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SesionCajaCard sesion={sesionInfo} totalVentasSesion={totalVentasSesion} />
+      <SesionCajaCard
+        sesion={sesionInfo}
+        totalVentasSesion={totalVentasSesion}
+      />
 
-        <CierreDiaCard
-          sesionesPendientes={estadoCierreDia.sesionesPendientes}
-          totalCortesPendientes={estadoCierreDia.totalCortesPendientes}
-          hayCajaAbierta={estadoCierreDia.hayCajaAbierta}
-        />
-      </div>
-
-      <VentasDiaCard ventas={ventasDelDia} />
+      <TotalesHoyCard totales={totalesDeLaSesion} />
+      <VentasDiaCard ventas={ventasDeLaSesion} />
     </PageHeader>
   );
 }

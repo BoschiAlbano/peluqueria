@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import type { CrearVentaResult } from "@/actions/ventas";
 import { Button } from "@/components/ui/button";
@@ -22,62 +23,90 @@ import {
 } from "@/components/ui/dialog";
 import { TicketCliente } from "@/components/ticket/ticket-cliente";
 
-const ETIQUETA_METODO_PAGO: Record<string, string> = {
-  EFECTIVO: "Efectivo",
-  TRANSFERENCIA: "Transferencia",
-};
-
 const formatoMoneda = new Intl.NumberFormat("es-AR", {
   style: "currency",
   currency: "ARS",
   maximumFractionDigits: 0,
 });
 
-export function VentasDiaCard({ ventas }: { ventas: CrearVentaResult[] }) {
-  const [seleccionada, setSeleccionada] = useState<CrearVentaResult | null>(null);
+export function VentasDiaCard({
+  ventas,
+  titulo = "Servicios de esta sesión",
+  mensajeVacio = "Todavía no cargaste ventas en esta sesión.",
+}: {
+  ventas: CrearVentaResult[];
+  titulo?: string;
+  mensajeVacio?: string;
+}) {
+  const [seleccionada, setSeleccionada] = useState<CrearVentaResult | null>(
+    null,
+  );
   const ticketRef = useRef<HTMLDivElement>(null);
   const imprimirTicket = useReactToPrint({ contentRef: ticketRef });
+
+  const filas = ventas.flatMap((v) =>
+    v.detalles.map((d, i) => ({
+      key: `${v.ventaId}-${i}`,
+      venta: v,
+      ...d,
+    })),
+  );
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Mis ventas de hoy</CardTitle>
+          <CardTitle>{titulo}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Ticket</TableHead>
-                <TableHead>Hora</TableHead>
-                <TableHead>Pago</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Peluquero</TableHead>
+                <TableHead>Servicio</TableHead>
+                <TableHead className="text-right">Precio</TableHead>
+                <TableHead className="text-right">Com. peluquero</TableHead>
+                <TableHead className="text-right">Com. dueño</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ventas.map((v) => (
-                <TableRow key={v.ventaId}>
-                  <TableCell>#{v.numeroTicket}</TableCell>
-                  <TableCell>{new Date(v.fecha).toLocaleTimeString("es-AR")}</TableCell>
-                  <TableCell>{ETIQUETA_METODO_PAGO[v.metodoPago] ?? v.metodoPago}</TableCell>
-                  <TableCell className="text-right">{formatoMoneda.format(v.total)}</TableCell>
+              {filas.map((f) => (
+                <TableRow key={f.key}>
+                  <TableCell>#{f.venta.numeroTicket}</TableCell>
+                  <TableCell>{f.peluqueroNombre}</TableCell>
+                  <TableCell>{f.servicioNombre}</TableCell>
+                  <TableCell className="text-right">
+                    {formatoMoneda.format(f.precioCobrado)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatoMoneda.format(f.comisionPeluquero)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatoMoneda.format(f.comisionDueno)}
+                  </TableCell>
                   <TableCell>
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
-                      onClick={() => setSeleccionada(v)}
+                      size="icon-sm"
+                      title="Reimprimir ticket"
+                      onClick={() => setSeleccionada(f.venta)}
                     >
-                      Reimprimir
+                      <Printer />
+                      <span className="sr-only">Reimprimir ticket</span>
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
-              {!ventas.length && (
+              {!filas.length && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Todavía no cargaste ventas hoy.
+                  <TableCell
+                    colSpan={7}
+                    className="text-center text-muted-foreground"
+                  >
+                    Todavía no cargaste ventas en esta sesión.
                   </TableCell>
                 </TableRow>
               )}
@@ -86,7 +115,10 @@ export function VentasDiaCard({ ventas }: { ventas: CrearVentaResult[] }) {
         </CardContent>
       </Card>
 
-      <Dialog open={!!seleccionada} onOpenChange={(open) => !open && setSeleccionada(null)}>
+      <Dialog
+        open={!!seleccionada}
+        onOpenChange={(open) => !open && setSeleccionada(null)}
+      >
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Reimprimir ticket</DialogTitle>

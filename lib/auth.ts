@@ -6,6 +6,7 @@ export type UsuarioActual = {
   id: string;
   nombre: string;
   rol: Rol;
+  autorizadoCierreDia: boolean;
 };
 
 // Devuelve el Usuario de Prisma vinculado a la sesión de Supabase Auth actual,
@@ -24,7 +25,12 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
 
   if (!usuario || !usuario.activo || !usuario.rol) return null;
 
-  return { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol };
+  return {
+    id: usuario.id,
+    nombre: usuario.nombre,
+    rol: usuario.rol,
+    autorizadoCierreDia: usuario.autorizadoCierreDia,
+  };
 }
 
 export async function requireUsuario(): Promise<UsuarioActual> {

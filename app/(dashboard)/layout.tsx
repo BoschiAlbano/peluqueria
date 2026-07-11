@@ -45,7 +45,7 @@ export default async function DashboardLayout({
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupContent>
-              <NavLinks rol={usuario.rol} />
+              <NavLinks rol={usuario.rol} autorizadoCierreDia={usuario.autorizadoCierreDia} />
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>

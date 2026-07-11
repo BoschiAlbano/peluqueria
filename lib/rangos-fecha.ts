@@ -59,3 +59,13 @@ export function inicioDeRango(rango: RangoFecha): Date {
 export function inicioDeHoy(): Date {
   return inicioDelDia(new Date());
 }
+
+// Fecha "DD/MM/AAAA" para mostrar en pantalla una columna `@db.Date` (ej.
+// CierreDia.fecha) — estas ya quedan fijadas al día comercial correcto
+// cuando se escriben (ver inicioDelDia) y Postgres las devuelve como
+// medianoche UTC de ese día. Mostrarlas con el huso horario del negocio (como
+// hace fechaComercialYMD con una fecha/hora real) las correría un día para
+// atrás — hay que leer el año/mes/día tal cual vienen, en UTC.
+export function formatoFechaSoloDia(fecha: Date): string {
+  return fecha.toLocaleDateString("es-AR", { timeZone: "UTC" });
+}

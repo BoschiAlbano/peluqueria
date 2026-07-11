@@ -6,6 +6,8 @@ import {
   actualizarCajero,
   cambiarPasswordCajero,
   cambiarEstadoCajero,
+  designarCierreDia,
+  quitarDesignacionCierreDia,
   type CajeroInfo,
 } from "@/actions/usuarios";
 import { Button } from "@/components/ui/button";
@@ -69,6 +71,22 @@ function FilaCajero({ cajero }: { cajero: CajeroInfo }) {
     });
   }
 
+  function toggleCierreDia() {
+    startTransition(async () => {
+      try {
+        if (cajero.autorizadoCierreDia) {
+          await quitarDesignacionCierreDia(cajero.id);
+          toast.success("Ya no puede cerrar la caja del día.");
+        } else {
+          await designarCierreDia(cajero.id);
+          toast.success(`${cajero.nombre} ahora puede cerrar la caja del día.`);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo actualizar.");
+      }
+    });
+  }
+
   return (
     <TableRow>
       <TableCell>
@@ -91,6 +109,22 @@ function FilaCajero({ cajero }: { cajero: CajeroInfo }) {
         <Badge variant={cajero.activo ? "default" : "secondary"}>
           {cajero.activo ? "Activo" : "Inactivo"}
         </Badge>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Badge variant={cajero.autorizadoCierreDia ? "default" : "secondary"}>
+            {cajero.autorizadoCierreDia ? "Autorizado" : "No autorizado"}
+          </Badge>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+            onClick={toggleCierreDia}
+          >
+            {cajero.autorizadoCierreDia ? "Quitar" : "Designar"}
+          </Button>
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex gap-1">
@@ -155,6 +189,7 @@ export function CajerosForm({ cajeros }: { cajeros: CajeroInfo[] }) {
             <TableHead>Nombre</TableHead>
             <TableHead>Usuario</TableHead>
             <TableHead>Estado</TableHead>
+            <TableHead>Cierre del día</TableHead>
             <TableHead>Contraseña</TableHead>
             <TableHead />
           </TableRow>
@@ -165,7 +200,7 @@ export function CajerosForm({ cajeros }: { cajeros: CajeroInfo[] }) {
           ))}
           {!cajeros.length && (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground">
+              <TableCell colSpan={6} className="text-center text-muted-foreground">
                 Sin cajeros creados.
               </TableCell>
             </TableRow>

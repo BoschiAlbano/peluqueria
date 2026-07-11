@@ -31,6 +31,21 @@ export const addExtremes = (left: string, right: string) => {
 
 export const addSeparator = () => "-".repeat(MAX);
 
+// Separador "fuerte" (=) para marcar el arranque de la liquidación de una
+// persona distinta (un cajero o un peluquero) dentro de un ticket con varias
+// liquidaciones seguidas — así se distingue de un vistazo de los separadores
+// finitos (-) que solo dividen subsecciones dentro de la liquidación de la
+// misma persona, y queda claro dónde cortar el papel para repartir.
+export const addSeparadorFuerte = () => "=".repeat(MAX);
+
+// Etiqueta legible de cada método de pago, compartida por los tickets que
+// muestran un desglose (control de caja de la sesión y liquidación de caja
+// del cierre del día).
+export const ETIQUETA_METODO_PAGO: Record<string, string> = {
+  EFECTIVO: "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+};
+
 // Alinea un valor (ej. un monto) contra el borde derecho, en su propia línea.
 export const addRight = (t: string) => {
   const s = truncate(t);

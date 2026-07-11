@@ -12,6 +12,7 @@ export type CajeroInfo = {
   nombre: string;
   username: string | null;
   activo: boolean;
+  autorizadoCierreDia: boolean;
 };
 
 export async function listarCajeros(): Promise<CajeroInfo[]> {
@@ -27,7 +28,39 @@ export async function listarCajeros(): Promise<CajeroInfo[]> {
     nombre: c.nombre,
     username: c.username,
     activo: c.activo,
+    autorizadoCierreDia: c.autorizadoCierreDia,
   }));
+}
+
+// El dueño designa a UN cajero (además de sí mismo) habilitado para cerrar
+// la caja del día. Nunca puede haber más de uno: designar a uno se lo quita
+// automáticamente a cualquier otro que lo tuviera.
+export async function designarCierreDia(cajeroId: string) {
+  await requireDueno();
+
+  await prisma.$transaction([
+    prisma.usuario.updateMany({
+      where: { autorizadoCierreDia: true },
+      data: { autorizadoCierreDia: false },
+    }),
+    prisma.usuario.update({
+      where: { id: cajeroId },
+      data: { autorizadoCierreDia: true },
+    }),
+  ]);
+
+  revalidatePath("/configuracion");
+}
+
+export async function quitarDesignacionCierreDia(cajeroId: string) {
+  await requireDueno();
+
+  await prisma.usuario.update({
+    where: { id: cajeroId },
+    data: { autorizadoCierreDia: false },
+  });
+
+  revalidatePath("/configuracion");
 }
 
 export type CrearCajeroInput = {

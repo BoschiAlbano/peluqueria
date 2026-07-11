@@ -28,11 +28,17 @@ model Usuario {
   rol         Rol?
   esPeluquero Boolean  @default(false)
   activo      Boolean  @default(true)
+  // Único cajero (además del dueño) habilitado para "cerrar la caja del
+  // día" — el dueño designa a uno solo desde Configuración; ver
+  // designarCierreDia() en actions/usuarios.ts, que se encarga de que nunca
+  // haya más de uno en true al mismo tiempo.
+  autorizadoCierreDia Boolean @default(false)
   createdAt   DateTime @default(now())
 
   ventasComoCajero    Venta[]        @relation("CajeroVentas")
   serviciosRealizados VentaDetalle[] @relation("PeluqueroServicios")
   sesionesCaja        SesionCaja[]
+  cierresDia          CierreDia[]
 }
 
 model Servicio {
@@ -109,9 +115,13 @@ model SesionCaja {
 
 model CierreDia {
   id               String       @id @default(uuid())
-  fecha            DateTime     @unique @db.Date
+  fecha            DateTime     @db.Date
+  cajeroId         String
+  cajero           Usuario      @relation(fields: [cajeroId], references: [id])
   totalCortesDia   Int
   bonoAlcanzado    Boolean      @default(false)
   montoBonoPorCaja Decimal?     @db.Decimal(10, 2)
   sesionesCaja     SesionCaja[]
+
+  @@unique([fecha, cajeroId])
 }

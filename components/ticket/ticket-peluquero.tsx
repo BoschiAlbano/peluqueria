@@ -1,12 +1,20 @@
 import type { PeluqueroResumenDia } from "@/actions/caja";
-import { addCenter, addExtremes, addSeparator, formatoMonto } from "@/lib/ticket-texto";
+import {
+  addCenter,
+  addExtremes,
+  addSeparadorFuerte,
+  addSeparator,
+  formatoMonto,
+} from "@/lib/ticket-texto";
 
 export function TicketPeluquero({ peluquero }: { peluquero: PeluqueroResumenDia }) {
   const lineas: string[] = [];
 
+  lineas.push("");
+  lineas.push(addSeparadorFuerte());
   lineas.push(addCenter("Comisión del día"));
   lineas.push(addCenter(peluquero.nombre));
-  lineas.push(addSeparator());
+  lineas.push(addSeparadorFuerte());
 
   const porServicio = new Map<string, { cantidad: number; total: number }>();
   for (const d of peluquero.detalles) {
@@ -22,6 +30,7 @@ export function TicketPeluquero({ peluquero }: { peluquero: PeluqueroResumenDia 
 
   lineas.push(addSeparator());
   lineas.push(addExtremes("Total comisión", formatoMonto(peluquero.totalComision)));
+  lineas.push(addSeparadorFuerte());
 
   return (
     <pre
