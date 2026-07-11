@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { SavedCheck } from "@/components/ui/saved-check";
 import { toast } from "sonner";
 
 function FilaServicio({ servicio }: { servicio: ServicioInfo }) {
@@ -27,6 +28,7 @@ function FilaServicio({ servicio }: { servicio: ServicioInfo }) {
   const [precio, setPrecio] = useState(String(servicio.precio));
   const [cuentaParaBono, setCuentaParaBono] = useState(servicio.cuentaParaBono);
   const [isPending, startTransition] = useTransition();
+  const [savedTick, setSavedTick] = useState(0);
   const guardadoRef = useRef({
     nombre: servicio.nombre,
     precio: String(servicio.precio),
@@ -46,6 +48,7 @@ function FilaServicio({ servicio }: { servicio: ServicioInfo }) {
       try {
         await actualizarServicio(servicio.id, nombre, Number(precio), cuentaParaBonoNuevo);
         guardadoRef.current = { nombre, precio, cuentaParaBono: cuentaParaBonoNuevo };
+        setSavedTick((t) => t + 1);
         toast.success("Servicio actualizado.");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "No se pudo actualizar.");
@@ -81,12 +84,15 @@ function FilaServicio({ servicio }: { servicio: ServicioInfo }) {
         />
       </TableCell>
       <TableCell>
-        <Input
-          value={precio}
-          onChange={(e) => setPrecio(e.target.value.replace(/[^0-9.]/g, ""))}
-          onBlur={() => guardar()}
-          className="w-24"
-        />
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={precio}
+            onChange={(e) => setPrecio(e.target.value.replace(/[^0-9.]/g, ""))}
+            onBlur={() => guardar()}
+            className="w-24"
+          />
+          <SavedCheck trigger={savedTick} />
+        </div>
       </TableCell>
       <TableCell>
         <Checkbox checked={cuentaParaBono} onCheckedChange={toggleCuentaParaBono} />

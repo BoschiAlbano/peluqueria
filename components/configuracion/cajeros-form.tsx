@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { SavedCheck } from "@/components/ui/saved-check";
 import { toast } from "sonner";
 
 function FilaCajero({ cajero }: { cajero: CajeroInfo }) {
@@ -29,6 +30,7 @@ function FilaCajero({ cajero }: { cajero: CajeroInfo }) {
   const [username, setUsername] = useState(cajero.username ?? "");
   const [nuevaPassword, setNuevaPassword] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [savedTick, setSavedTick] = useState(0);
   const guardadoRef = useRef({ nombre: cajero.nombre, username: cajero.username ?? "" });
 
   function guardarDatos() {
@@ -40,6 +42,7 @@ function FilaCajero({ cajero }: { cajero: CajeroInfo }) {
       try {
         await actualizarCajero({ id: cajero.id, nombre, username });
         guardadoRef.current = { nombre, username };
+        setSavedTick((t) => t + 1);
         toast.success("Datos actualizados.");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "No se pudo actualizar.");
@@ -98,12 +101,15 @@ function FilaCajero({ cajero }: { cajero: CajeroInfo }) {
         />
       </TableCell>
       <TableCell>
-        <Input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          onBlur={guardarDatos}
-          className="w-32"
-        />
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            onBlur={guardarDatos}
+            className="w-32"
+          />
+          <SavedCheck trigger={savedTick} />
+        </div>
       </TableCell>
       <TableCell>
         <Badge variant={cajero.activo ? "default" : "secondary"}>

@@ -7,6 +7,7 @@ import { TotalesHoyCard } from "@/components/pos/totales-hoy-card";
 import { obtenerTotalesDeLaSesion } from "@/actions/caja";
 import { obtenerVentasDeLaSesionActual } from "@/actions/ventas";
 import { PageHeader } from "@/components/layout/page-header";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function CajaPage() {
   const usuario = await obtenerUsuarioActual();
@@ -54,13 +55,25 @@ export default async function CajaPage() {
       title="Caja Actual"
       description="Abrí y cerrá sesiones de caja durante el día (mañana, tarde, lo que haga falta)."
     >
-      <SesionCajaCard
-        sesion={sesionInfo}
-        totalVentasSesion={totalVentasSesion}
-      />
+      <Tabs defaultValue="resumen">
+        <TabsList>
+          <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="totales">Totales</TabsTrigger>
+          <TabsTrigger value="servicios">Servicios</TabsTrigger>
+        </TabsList>
 
-      <TotalesHoyCard totales={totalesDeLaSesion} />
-      <VentasDiaCard ventas={ventasDeLaSesion} />
+        <TabsContent value="resumen">
+          <SesionCajaCard sesion={sesionInfo} totalVentasSesion={totalVentasSesion} />
+        </TabsContent>
+
+        <TabsContent value="totales">
+          <TotalesHoyCard totales={totalesDeLaSesion} />
+        </TabsContent>
+
+        <TabsContent value="servicios">
+          <VentasDiaCard ventas={ventasDeLaSesion} />
+        </TabsContent>
+      </Tabs>
     </PageHeader>
   );
 }

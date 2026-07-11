@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TicketResumenSesion } from "@/components/ticket/ticket-resumen-sesion";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 
 type SesionAbierta = {
@@ -41,6 +42,7 @@ export function SesionCajaCard({
   const [etiqueta, setEtiqueta] = useState("");
   const [isPending, startTransition] = useTransition();
   const [resumen, setResumen] = useState<ResumenSesionCajero | null>(null);
+  const [confirmarCerrarAbierto, setConfirmarCerrarAbierto] = useState(false);
   const ticketRef = useRef<HTMLDivElement>(null);
   const imprimirTicket = useReactToPrint({ contentRef: ticketRef });
 
@@ -56,26 +58,14 @@ export function SesionCajaCard({
     });
   }
 
-  function handleCerrar() {
+  function confirmarCerrar() {
     if (!sesion) return;
 
-    toast.warning("¿Estás seguro que querés cerrar la caja?", {
-      action: {
-        label: "Sí, cerrar",
-        onClick: () => confirmarCerrar(sesion.id),
-      },
-      cancel: {
-        label: "Cancelar",
-        onClick: () => {},
-      },
-    });
-  }
-
-  function confirmarCerrar(sesionId: string) {
     startTransition(async () => {
       try {
-        const resultado = await cerrarSesion(sesionId);
+        const resultado = await cerrarSesion(sesion.id);
         setResumen(resultado);
+        setConfirmarCerrarAbierto(false);
         toast.success("Caja cerrada.");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "No se pudo cerrar la caja.");
@@ -128,7 +118,7 @@ export function SesionCajaCard({
               className="w-full"
               variant="destructive"
               disabled={isPending}
-              onClick={handleCerrar}
+              onClick={() => setConfirmarCerrarAbierto(true)}
             >
               {isPending ? "Cerrando…" : "Cerrar caja"}
             </Button>
@@ -156,6 +146,17 @@ export function SesionCajaCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmarCerrarAbierto}
+        onOpenChange={setConfirmarCerrarAbierto}
+        title="¿Cerrar la caja?"
+        description="Se registra la hora de cierre y el control de ventas de esta sesión. El sueldo y el bono se calculan recién al cerrar la caja del día."
+        confirmLabel={isPending ? "Cerrando…" : "Sí, cerrar"}
+        onConfirm={confirmarCerrar}
+        isPending={isPending}
+        variant="destructive"
+      />
     </>
   );
 }

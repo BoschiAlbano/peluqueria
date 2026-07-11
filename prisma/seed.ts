@@ -55,8 +55,10 @@ async function main() {
   console.log("Sembrando servicios (Corte, Barba)...");
   await prisma.servicio.createMany({
     data: [
-      { nombre: "Corte", precio: 8000, cuentaParaBono: true },
-      { nombre: "Barba", precio: 4000, cuentaParaBono: false },
+      { nombre: "Corte", precio: 10000, cuentaParaBono: true },
+      { nombre: "Barba", precio: 5000, cuentaParaBono: false },
+      { nombre: "Rasurado", precio: 2000, cuentaParaBono: false },
+      { nombre: "Corte/Ras.", precio: 12000, cuentaParaBono: false },
     ],
     skipDuplicates: true,
   });
@@ -74,10 +76,7 @@ async function main() {
     "Sembrando escalones de bono (63 cortes = $5000, 100 cortes = $10000)...",
   );
   await prisma.metaCajero.createMany({
-    data: [
-      { umbralCortes: 63, montoBono: 5000 },
-      { umbralCortes: 100, montoBono: 10000 },
-    ],
+    data: [{ umbralCortes: 30, montoBono: 5000 }],
     skipDuplicates: true,
   });
   console.log("✓ Escalones de bono creados.");
@@ -99,7 +98,7 @@ async function main() {
   // Sin cajeros de prueba — el dueño los crea desde Configuración cuando los
   // necesite. Sin cajas ni ventas — arranca en cero.
   console.log("Sembrando cuenta del dueño...");
-  await crearDueno("El Maestro", "El Maestro", "123456A");
+  await crearDueno("El Maestro", "El Maestro", "123456");
 
   console.log("Seed completado.");
 }

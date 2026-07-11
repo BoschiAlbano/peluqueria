@@ -20,11 +20,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { SavedCheck } from "@/components/ui/saved-check";
 import { toast } from "sonner";
 
 function FilaPeluquero({ peluquero }: { peluquero: PeluqueroInfo }) {
   const [nombre, setNombre] = useState(peluquero.nombre);
   const [isPending, startTransition] = useTransition();
+  const [savedTick, setSavedTick] = useState(0);
   const guardadoRef = useRef(peluquero.nombre);
 
   function guardarNombre() {
@@ -34,6 +36,7 @@ function FilaPeluquero({ peluquero }: { peluquero: PeluqueroInfo }) {
       try {
         await actualizarPeluquero(peluquero.id, nombre);
         guardadoRef.current = nombre;
+        setSavedTick((t) => t + 1);
         toast.success("Nombre actualizado.");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "No se pudo actualizar.");
@@ -55,12 +58,15 @@ function FilaPeluquero({ peluquero }: { peluquero: PeluqueroInfo }) {
   return (
     <TableRow>
       <TableCell>
-        <Input
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          onBlur={guardarNombre}
-          className="w-40"
-        />
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            onBlur={guardarNombre}
+            className="w-40"
+          />
+          <SavedCheck trigger={savedTick} />
+        </div>
       </TableCell>
       <TableCell>
         <Badge variant={peluquero.activo ? "default" : "secondary"}>

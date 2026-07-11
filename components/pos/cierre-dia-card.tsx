@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TicketCierreDia } from "@/components/ticket/ticket-cierre-dia";
 import { toast } from "sonner";
 
@@ -26,27 +27,17 @@ export function CierreDiaCard({
 }) {
   const [isPending, startTransition] = useTransition();
   const [cierresDia, setCierresDia] = useState<CierreDiaResumen[] | null>(null);
+  const [confirmarCerrarAbierto, setConfirmarCerrarAbierto] = useState(false);
+  const [confirmarReabrirAbierto, setConfirmarReabrirAbierto] = useState(false);
   const ticketRef = useRef<HTMLDivElement>(null);
   const imprimirTickets = useReactToPrint({ contentRef: ticketRef });
-
-  function handleCerrarDia() {
-    toast.warning("¿Estás seguro que querés cerrar la caja del día?", {
-      action: {
-        label: "Sí, cerrar",
-        onClick: confirmarCerrarDia,
-      },
-      cancel: {
-        label: "Cancelar",
-        onClick: () => {},
-      },
-    });
-  }
 
   function confirmarCerrarDia() {
     startTransition(async () => {
       try {
         const resultado = await cerrarDia();
         setCierresDia(resultado);
+        setConfirmarCerrarAbierto(false);
         toast.success("Día cerrado.");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "No se pudo cerrar el día.");
@@ -54,26 +45,11 @@ export function CierreDiaCard({
     });
   }
 
-  function handleReabrirDia() {
-    toast.warning(
-      "¿Reabrir la caja del día? Se van a poder abrir cajas de nuevo, y si se carga más actividad el bono puede recalcularse distinto al ya informado.",
-      {
-        action: {
-          label: "Sí, reabrir",
-          onClick: confirmarReabrirDia,
-        },
-        cancel: {
-          label: "Cancelar",
-          onClick: () => {},
-        },
-      },
-    );
-  }
-
   function confirmarReabrirDia() {
     startTransition(async () => {
       try {
         await reabrirDia();
+        setConfirmarReabrirAbierto(false);
         toast.success("Día reabierto.");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "No se pudo reabrir el día.");
@@ -104,7 +80,7 @@ export function CierreDiaCard({
                 className="w-full"
                 variant="outline"
                 disabled={isPending}
-                onClick={handleReabrirDia}
+                onClick={() => setConfirmarReabrirAbierto(true)}
               >
                 Reabrir caja del día
               </Button>
@@ -126,7 +102,7 @@ export function CierreDiaCard({
               <Button
                 className="w-full"
                 disabled={isPending || !!cajeroIdConCajaAbierta}
-                onClick={handleCerrarDia}
+                onClick={() => setConfirmarCerrarAbierto(true)}
               >
                 {isPending ? "Cerrando…" : "Cerrar caja del día"}
               </Button>
@@ -165,6 +141,27 @@ export function CierreDiaCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmarCerrarAbierto}
+        onOpenChange={setConfirmarCerrarAbierto}
+        title="¿Cerrar la caja del día?"
+        description="Se liquida sueldo y bono de todos los cajeros con sesiones pendientes. No se va a poder abrir ninguna caja nueva ni volver a cerrar hasta mañana."
+        confirmLabel={isPending ? "Cerrando…" : "Sí, cerrar"}
+        onConfirm={confirmarCerrarDia}
+        isPending={isPending}
+      />
+
+      <ConfirmDialog
+        open={confirmarReabrirAbierto}
+        onOpenChange={setConfirmarReabrirAbierto}
+        title="¿Reabrir la caja del día?"
+        description="Se van a poder abrir cajas de nuevo hoy. Si se carga más actividad y se vuelve a cerrar, el bono puede recalcularse distinto al que ya se informó."
+        confirmLabel={isPending ? "Reabriendo…" : "Sí, reabrir"}
+        onConfirm={confirmarReabrirDia}
+        isPending={isPending}
+        variant="destructive"
+      />
     </>
   );
 }

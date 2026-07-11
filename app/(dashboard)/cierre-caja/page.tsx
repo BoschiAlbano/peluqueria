@@ -10,6 +10,7 @@ import {
 } from "@/actions/caja";
 import { obtenerServiciosDelDia } from "@/actions/ventas";
 import { PageHeader } from "@/components/layout/page-header";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function CierreCajaPage() {
   const usuario = await obtenerUsuarioActual();
@@ -33,19 +34,33 @@ export default async function CierreCajaPage() {
       title="Cierre del día"
       description="Liquidá sueldo + bono del día de cada cajero, con los totales y servicios de todo el día comercial."
     >
-      <CierreDiaCard
-        cajeros={estadoCierreDia.cajeros}
-        cajeroIdConCajaAbierta={estadoCierreDia.cajeroIdConCajaAbierta}
-        cierresDeHoy={cierresDeHoy}
-      />
+      <Tabs defaultValue="resumen">
+        <TabsList>
+          <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="totales">Totales</TabsTrigger>
+          <TabsTrigger value="servicios">Servicios</TabsTrigger>
+        </TabsList>
 
-      <TotalesHoyCard totales={totalesDelDia} />
+        <TabsContent value="resumen">
+          <CierreDiaCard
+            cajeros={estadoCierreDia.cajeros}
+            cajeroIdConCajaAbierta={estadoCierreDia.cajeroIdConCajaAbierta}
+            cierresDeHoy={cierresDeHoy}
+          />
+        </TabsContent>
 
-      <VentasDiaCard
-        ventas={serviciosDelDia}
-        titulo="Servicios del día"
-        mensajeVacio="Todavía no se cargaron ventas hoy."
-      />
+        <TabsContent value="totales">
+          <TotalesHoyCard totales={totalesDelDia} />
+        </TabsContent>
+
+        <TabsContent value="servicios">
+          <VentasDiaCard
+            ventas={serviciosDelDia}
+            titulo="Servicios del día"
+            mensajeVacio="Todavía no se cargaron ventas hoy."
+          />
+        </TabsContent>
+      </Tabs>
     </PageHeader>
   );
 }

@@ -220,7 +220,7 @@ export default async function ReportesPage({
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="sticky top-0 z-10 bg-card">
                 <TableHead>Fecha</TableHead>
                 <TableHead>Ticket</TableHead>
                 <TableHead>Peluquero</TableHead>
@@ -232,7 +232,7 @@ export default async function ReportesPage({
             </TableHeader>
             <TableBody>
               {filas.map((f, i) => (
-                <TableRow key={i}>
+                <TableRow key={i} className={i % 2 === 1 ? "bg-muted/30" : undefined}>
                   <TableCell>{f.fecha.toLocaleDateString("es-AR")}</TableCell>
                   <TableCell>#{f.numeroTicket}</TableCell>
                   <TableCell>{f.peluqueroNombre}</TableCell>
@@ -300,7 +300,7 @@ export default async function ReportesPage({
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="sticky top-0 z-10 bg-card">
                 <TableHead>Fecha</TableHead>
                 <TableHead>Cajero</TableHead>
                 <TableHead className="text-right">Cortes</TableHead>
@@ -312,8 +312,8 @@ export default async function ReportesPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cierres.map((c) => (
-                <TableRow key={c.id}>
+              {cierres.map((c, i) => (
+                <TableRow key={c.id} className={i % 2 === 1 ? "bg-muted/30" : undefined}>
                   <TableCell>{formatoFechaSoloDia(c.fecha)}</TableCell>
                   <TableCell>{c.cajeroNombre}</TableCell>
                   <TableCell className="text-right">

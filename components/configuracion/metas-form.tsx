@@ -19,12 +19,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { SavedCheck } from "@/components/ui/saved-check";
 import { toast } from "sonner";
 
 function FilaMeta({ meta }: { meta: MetaCajeroInfo }) {
   const [umbralCortes, setUmbralCortes] = useState(String(meta.umbralCortes));
   const [montoBono, setMontoBono] = useState(String(meta.montoBono));
   const [isPending, startTransition] = useTransition();
+  const [savedTick, setSavedTick] = useState(0);
   const guardadoRef = useRef({
     umbralCortes: String(meta.umbralCortes),
     montoBono: String(meta.montoBono),
@@ -42,6 +44,7 @@ function FilaMeta({ meta }: { meta: MetaCajeroInfo }) {
       try {
         await actualizarMeta(meta.id, Number(umbralCortes), Number(montoBono));
         guardadoRef.current = { umbralCortes, montoBono };
+        setSavedTick((t) => t + 1);
         toast.success("Escalón actualizado.");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "No se pudo actualizar.");
@@ -71,12 +74,15 @@ function FilaMeta({ meta }: { meta: MetaCajeroInfo }) {
         />
       </TableCell>
       <TableCell>
-        <Input
-          value={montoBono}
-          onChange={(e) => setMontoBono(e.target.value.replace(/[^0-9.]/g, ""))}
-          onBlur={guardar}
-          className="w-28"
-        />
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={montoBono}
+            onChange={(e) => setMontoBono(e.target.value.replace(/[^0-9.]/g, ""))}
+            onBlur={guardar}
+            className="w-28"
+          />
+          <SavedCheck trigger={savedTick} />
+        </div>
       </TableCell>
       <TableCell>
         <Badge variant={meta.activo ? "default" : "secondary"}>
